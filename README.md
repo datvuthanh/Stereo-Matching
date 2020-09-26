@@ -3,9 +3,6 @@
 This is a Keras version re-implementation of Luo, W., & Schwing, A. G. (n.d.). Efficient Deep Learning for Stereo Matching.
 (https://www.cs.toronto.edu/~urtasun/publications/luo_etal_cvpr16.pdf)
 
-
-## To run
-
 ### Setup data folders
 
 ```
