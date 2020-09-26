@@ -9,15 +9,15 @@
 
 ## Train
 
-    python3 train.py --data /data/kitti2015/training
+    python3 train.py --data /kitti2015/training
 
 ## Test
 
-    python3 eval.py --data /data/kitti2015/training --checkpoint pretrained pretrained/win37_dep9.pkl
+    python3 eval.py --data /kitti2015/training --checkpoint pretrained pretrained/win37_dep9.pkl
 
 ## Inference
 
-    python3 inference.py --data /data/kitti2015/testing --img_num 0
+    python3 inference.py --data /kitti2015/testing --img_num 0
 
 
 ## Results
