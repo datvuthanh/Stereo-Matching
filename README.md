@@ -17,7 +17,7 @@
 
 ## Inference
 
-    python3 inference --data /data/kitti2015/testing --img_num 0
+    python3 inference.py --data /data/kitti2015/testing --img_num 0
 
 
 ## Results
