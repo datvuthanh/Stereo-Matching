@@ -1,92 +1,71 @@
-import argparse
-import os
-import time
-
-import cv2
-import matplotlib.pyplot as plt
+from utils.data_utils.DataHandler import DataHandler
+from keras.models import load_model, Model
+from keras.layers import Input
+from keras.backend import set_learning_phase
+import keras.backend as K
 import numpy as np
-import torch
-import torch.nn as nn
-import torchvision
-from PIL import Image
-from torchvision import transforms
-
-from model import Model
-
-parser = argparse.ArgumentParser()
-parser.add_argument("--data", type=str, default='data/training')
-parser.add_argument("--checkpoint", type=str, default='checkpoint.pkl')
-parser.add_argument("--img_num", type=int, default=0)
-parser.add_argument("--disp_range", type=int, default=128)
-args = parser.parse_args()
+import os
+import tensorflow as tf
+from models.models import dot_win37_dep9
+import matplotlib.pyplot as plt
 
 
-def load_sample(img_num):
-    left_image = Image.open(os.path.join(args.data, 'image_2/%06d_10.png' % (img_num)))
-    right_image = Image.open(os.path.join(args.data, 'image_3/%06d_10.png' % (img_num)))
-    left_image = np.array(left_image)
-    right_image = np.array(right_image)
-    left_image = 255 * transforms.ToTensor()(left_image)
-    right_image = 255 * transforms.ToTensor()(right_image)
-
-    return left_image, right_image
+def corr_layer_inference(left, right):
+    return np.sum(left * right, axis=-1)
 
 
-disp_range = args.disp_range
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-model = Model(3).to(device)
-model.load_state_dict(torch.load(args.checkpoint))
-model.eval()
+def load_experiment(experiment_path, im_shape=(375, 1242, 3)):
+    path = os.path.join(experiment_path, "siamese_net.hdf5")
+    mdl = dot_win37_dep9(im_shape, im_shape)
+    mdl.build_model(add_corr_layer=False)
+    mdl.model.load_weights(os.path.join(experiment_path, "siamese_net.hdf5"))
 
-left_img, right_image = load_sample(args.img_num)
-left_img = (left_img - left_img.mean())/(left_img.std())
-right_img = (right_image - right_image.mean())/(right_image.std())
-img_height = left_img.size(1)
-img_width = left_img.size(2)
+    return mdl.model
 
-left_img = left_img.view(1, left_img.size(0), left_img.size(1), left_img.size(2)).to(device)
-right_img = right_img.view(1, right_img.size(0), right_img.size(1), right_img.size(2)).to(device)
 
-start_time = time.time()
-left_features = model.predict(left_img)
-right_features = model.predict(right_img)
-print(time.time() - start_time)
+def main():
+    set_learning_phase(0)
+    data_lookup = {
+        "train": "tr_160_18_100.bin",
+        "val": "val_40_18_100.bin"
+    }
 
-unary_vol = torch.zeros([img_height, img_width, disp_range])
-right_unary_vol = torch.zeros([img_height, img_width, disp_range])
-start_pos = 0
-end_pos = img_width - 1
-start_time = time.time()
-while start_pos <= end_pos:
-    for loc_idx in range(0, disp_range):
-        x_off = -loc_idx + 1
-        if end_pos+x_off >= 1 and img_width >= start_pos+x_off:
-            l = left_features[:, :, :, np.max([start_pos, -x_off+1]): np.min([end_pos, img_width-x_off])]
-            r = right_features[:, :, :, np.max([1, x_off+start_pos]): np.min([img_width, end_pos+x_off])]
+    args = {
+        "batch_size": 32,
+        "data_version": "kitti2015",
+        "util_root": "/home/marco/repos/EfficientStereoMatching/data/KITTI2015/debug_15/",
+        "data_root": "/home/marco/repos/EfficientStereoMatching/data/KITTI2015/data_scene_flow/testing",
+        "experiment_root": "/home/marco/repos/EfficientStereoMatching/experiments",
+        "filename": data_lookup["train"],
+        "num_tr_img": 160,  # TODO: Avoid hardcoding this
+        "num_val_img": 40,
+        "start_id": 0,
+        "num_imgs": 5
+    }
 
-            p = torch.mul(l, r)
-            q = torch.sum(p, 1)
-            unary_vol[:, np.max([start_pos, -x_off+1]): np.min([end_pos, img_width-x_off]), loc_idx] = q.data.view(q.data.size(1), q.data.size(2))
-            right_unary_vol[:, np.max([1, x_off+start_pos]): np.min([img_width, end_pos+x_off]),
-                            loc_idx] = q.data.view(q.data.size(1), q.data.size(2))
+    experiment_name = "020418_203327"
+    experiment_path = os.path.join(args["experiment_root"], experiment_name)
+    mdl = load_experiment(experiment_path)
 
-    start_pos = end_pos + 1
+    dh = DataHandler(args)
+    dh.load()
 
-print(time.time() - start_time)
-_, pred_1 = torch.max(unary_vol, 2)
-_, pred_2 = torch.max(right_unary_vol, 2)
+    for i in range(args["start_id"], args["start_id"] + args["num_imgs"]):
+        l_img, r_img = (dh.ldata[i][np.newaxis, ...],
+                        dh.rdata[i][np.newaxis, ...])
 
-pred_disp1 = pred_1.view(unary_vol.size(0), unary_vol.size(1))
-pred_disp2 = pred_2.view(unary_vol.size(0), unary_vol.size(1))
+        l_branch, r_branch = mdl.predict([l_img, r_img])
+        pred = corr_layer_inference(l_branch, r_branch)
+        map_width = l_branch.shape[2]
+        unary_vol = np.zeros((l_branch.shape[1], map_width, 100))
 
-total_time = (time.time() - start_time)
-print("Inference took: %fs" % total_time)
+        # TODO:  Implement the inference phase according to the offical
+        # implementation
+        plt.figure()
+        plt.imshow(pred)
+        plt.figure()
+        plt.imshow(l_img[0])
+        plt.show()
 
-image = transforms.ToPILImage()(np.uint8(pred_disp1))
-image.save('output-%d.png' % args.img_num)
-
-im_gray = cv2.imread("output-%d.png" % args.img_num, cv2.IMREAD_GRAYSCALE)
-im_color = cv2.applyColorMap(255-cv2.convertScaleAbs(im_gray, alpha=2), cv2.COLORMAP_JET)
-cv2.imwrite("output-%d-color.png" % args.img_num, im_color)
-plt.imshow(pred_disp1, cmap='gray')
-plt.show()
+if __name__ == "__main__":
+    main()
