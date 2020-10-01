@@ -48,9 +48,9 @@ def main():
     args = {
         "batch_size": 128,
         "data_version": "kitti2015",
-        "util_root": "/content/deep_learning_stereo_matching/preprocess/debug_15/",
-        "data_root": "/content/deep_learning_stereo_matching/kitti_2015/training",
-        "experiment_root": "/content/deep_learning_stereo_matching/experiments/",
+        "util_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/preprocess/debug_15",
+        "data_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/kitti_2015/training",
+        "experiment_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/experiments",
         "num_val_loc": 10000,
         "num_tr_img": 160,  # TODO: Avoid hardcoding this
         "num_val_img": 40,
