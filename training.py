@@ -69,6 +69,10 @@ def main():
     network = dot_win37_dep9(dh.args["l_psz"], dh.args["r_psz"])
     network.build_model()
     mdl = network.model
+    
+    # Load weights
+    mdl.load_weights('/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/experiments/011020_175120/siamese_net.hdf5')
+
     experiment = create_experiment(args["experiment_root"])
     cbs = get_callbacks(experiment)
     optim = Adagrad()
