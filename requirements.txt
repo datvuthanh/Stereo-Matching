@@ -1,4 +1,2 @@
-keras==2.2.4
-tensorflow-gpu==1.15
 scipy==1.2.1
 pillow
