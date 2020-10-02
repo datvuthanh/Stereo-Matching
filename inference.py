@@ -56,7 +56,7 @@ def main():
 
     dh = DataHandler(args)
     dh.load()
-
+    #print(dh.data_path)
     for i in range(args["start_id"], args["start_id"] + args["num_imgs"]):
 
         # Read image
@@ -91,8 +91,10 @@ def main():
         pred = np.argmax(cost_volume, axis=2) * scale_factor
         
         # To do: cost aggreation --> SGM algorithm.
-
-        misc.imsave('%s/disp_map_%06d_10.png' % (args["out_dir"], i), pred)
+        
+        # Get ID image
+        id_img = dh.file_ids[i]
+        misc.imsave('%s/disp_map_%06d_10.png' % (args["out_dir"], id_img), pred)
 
 
 if __name__ == "__main__":
