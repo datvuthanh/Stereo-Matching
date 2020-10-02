@@ -48,9 +48,9 @@ def main():
     args = {
         "batch_size": 128,
         "data_version": "kitti2015",
-        "util_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/preprocess/debug_15",
-        "data_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/kitti_2015/training",
-        "experiment_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/experiments",
+        "util_root": "/content/Stereo-Matching/preprocess/debug_15",
+        "data_root": "/content/Stereo-Matching/kitti_2015/training",
+        "experiment_root": "/content/Stereo-Matching/experiments",
         "num_val_loc": 10000,
         "num_tr_img": 160,  # TODO: Avoid hardcoding this
         "num_val_img": 40,
@@ -71,7 +71,7 @@ def main():
     mdl = network.model
     
     # Load weights
-    mdl.load_weights('/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/experiments/011020_175120/siamese_net.hdf5')
+    mdl.load_weights('/content/Stereo-Matching/siamese_net.hdf5')
 
     experiment = create_experiment(args["experiment_root"])
     cbs = get_callbacks(experiment)
