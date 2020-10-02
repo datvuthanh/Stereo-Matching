@@ -8,10 +8,13 @@ import os
 import tensorflow as tf
 from models.models import dot_win37_dep9
 import matplotlib.pyplot as plt
+from scipy import misc
+import cv2
 
 
-def corr_layer_inference(left, right):
-    return np.sum(left * right, axis=-1)
+def map_inner_product(lmap, rmap):
+	prod = tf.reduce_sum(tf.multiply(lmap, rmap), axis=3, name='map_inner_product')
+	return prod
 
 
 def load_experiment(experiment_path, im_shape=(375, 1242, 3)):
@@ -33,17 +36,21 @@ def main():
     args = {
         "batch_size": 32,
         "data_version": "kitti2015",
-        "util_root": "/home/marco/repos/EfficientStereoMatching/data/KITTI2015/debug_15/",
-        "data_root": "/home/marco/repos/EfficientStereoMatching/data/KITTI2015/data_scene_flow/testing",
-        "experiment_root": "/home/marco/repos/EfficientStereoMatching/experiments",
-        "filename": data_lookup["train"],
+        "util_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/preprocess/debug_15",
+        "data_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/kitti_2015/testing",
+        "experiment_root": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/experiments",
+        "filename": data_lookup["val"],
         "num_tr_img": 160,  # TODO: Avoid hardcoding this
         "num_val_img": 40,
         "start_id": 0,
-        "num_imgs": 5
+        "num_imgs": 5,
+        "disp_range" : 201,
+        "out_dir": "/content/Efficient-Deep-Learning-for-Stereo-Matching-Keras/predictions/"
     }
+    
+    scale_factor = 255 / (args["disp_range"] - 1)
 
-    experiment_name = "020418_203327"
+    experiment_name = "011020_175120"
     experiment_path = os.path.join(args["experiment_root"], experiment_name)
     mdl = load_experiment(experiment_path)
 
@@ -51,21 +58,42 @@ def main():
     dh.load()
 
     for i in range(args["start_id"], args["start_id"] + args["num_imgs"]):
-        l_img, r_img = (dh.ldata[i][np.newaxis, ...],
-                        dh.rdata[i][np.newaxis, ...])
 
-        l_branch, r_branch = mdl.predict([l_img, r_img])
-        pred = corr_layer_inference(l_branch, r_branch)
+        # Read image
+        l_img, r_img = dh.ldata[i],dh.rdata[i]
+        
+        # Normalize data
+        linput = (l_img - l_img.mean()) / l_img.std()
+        rinput = (r_img - r_img.mean()) / r_img.std()
+
+        # Reshape into batch 1
+        linput = linput.reshape(1, linput.shape[0], linput.shape[1],linput.shape[2])
+        rinput = rinput.reshape(1, rinput.shape[0], rinput.shape[1], rinput.shape[2])
+
+        # Predict two feature 
+        l_branch, r_branch = mdl.predict([linput, rinput])
+
         map_width = l_branch.shape[2]
-        unary_vol = np.zeros((l_branch.shape[1], map_width, 100))
 
-        # TODO:  Implement the inference phase according to the offical
-        # implementation
-        plt.figure()
-        plt.imshow(pred)
-        plt.figure()
-        plt.imshow(l_img[0])
-        plt.show()
+        # Create cost volume with disparity range
+        cost_volume = np.zeros((l_branch.shape[1], l_branch.shape[2], args["disp_range"]))
+        
+        for loc in range(args["disp_range"]):
+            x_off = -loc
+            l = l_branch[:, :, max(0, -x_off): map_width,:]
+            r = r_branch[:, :, 0: min(map_width, map_width + x_off),:]
+            res = map_inner_product(l, r)
+            cost_volume[:, max(0, -x_off): map_width, loc] = res[0, :, :] 
+        
+        print('Image %s processed.' % (i + 1))
+
+        # Get minimum cost
+        pred = np.argmax(cost_volume, axis=2) * scale_factor
+        
+        # To do: cost aggreation --> SGM algorithm.
+
+        misc.imsave('%s/disp_map_%06d_10.png' % (args["out_dir"], i), pred)
+
 
 if __name__ == "__main__":
     main()
