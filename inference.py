@@ -8,7 +8,6 @@ import numpy as np
 from data_handler import Data_handler
 from scipy import misc
 import matplotlib.pyplot as plt
-from sgm import *
 
 flags = tf.app.flags
 
@@ -29,9 +28,9 @@ flags.DEFINE_integer('num_val_loc', 50000, 'number of validation locations')
 flags.DEFINE_integer('disp_range', 201, 'disparity range')
 flags.DEFINE_integer('num_imgs', 5, 'Number of test images')
 flags.DEFINE_integer('start_id', 0, 'ID of first test image')
-flags.DEFINE_bool('cost_aggregation', True, 'Cost aggregation')
+flags.DEFINE_bool('cost_aggregation', True, 'Post processing')
 flags.DEFINE_bool('average_pooling', True, 'True: average pooling, False: Semi global matching')
-#flags.DEFINE_bool('post_processing',True,'Apply median blur filter after finishing cost aggreation')
+
 
 FLAGS = flags.FLAGS
 
@@ -106,17 +105,9 @@ with tf.Session() as session:
                 unary_vol = tf.squeeze(unary_vol)
               # If not we will use semi global matching
               else:
-                parameters = Parameters(max_disparity=FLAGS.disp_range, P1=10, P2=120, csize=(7, 7), bsize=(3, 3))
-                paths = Paths()
-                #print("here")
-                unary_vol = aggregate_costs(unary_vol, parameters, paths)
-                      
+                pass
             pred = tf.argmax(unary_vol, axis=2)
             # Convert tensor to array
             pred = pred.eval() * scale_factor
-            # if FLAGS.post_processing:
-            #   # Applying median filter size 3x3
-            #   pred = cv2.medianBlur(pred,(3,3))
-
             misc.imsave('%s/disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), pred)
             print('Image %s processed.' % (i + 1))
