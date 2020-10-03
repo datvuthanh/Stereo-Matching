@@ -32,6 +32,8 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 3. cd preprocess
 4. octave preprocess.m
 
+## Computional Graph
+![Computional Graph](results/graph.png)
 
 ## Train
 
@@ -59,10 +61,15 @@ Iterations: 20000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
 Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
-![Predicted disparity](disp_images/step_40000/disp_map_000161_10_20000.png)
+![Predicted disparity](disp_images/step_40000/disp_map_000161_10.png)
 
 ## Cost Aggregation 
 
 ### Average pooling method
 
-![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10_20000.png)
+![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10.png)
+
+## Visualization 
+
+![Loss](results/loss.png)
+
