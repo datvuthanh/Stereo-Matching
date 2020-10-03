@@ -47,12 +47,22 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 
 
 ## Results
-![Left image](predictions/000161_10.png)
+![Left image](disp_images/000161_10.png)
 
 Iterations: 5000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
-![Predicted disparity](predictions/disp_map_000161_10_5000.png)
+![Predicted disparity](disp_images/step_5000/disp_map_000161_10_5000.png)
 
 Iterations: 20000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
-![Predicted disparity](predictions/disp_map_000161_10_20000.png)
+![Predicted disparity](disp_images/step_20000/disp_map_000161_10_20000.png)
+
+Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
+
+![Predicted disparity](disp_images/step_40000/disp_map_000161_10_20000.png)
+
+## Cost Aggregation 
+
+### Average pooling method
+
+![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10_20000.png)
