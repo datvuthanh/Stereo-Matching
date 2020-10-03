@@ -66,3 +66,8 @@ Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 ### Average pooling method
 
 ![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10.png)
+
+## Visualization 
+
+![Loss](results/loss.png)
+
