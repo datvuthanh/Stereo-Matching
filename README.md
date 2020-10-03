@@ -81,7 +81,7 @@ Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
   | baseline (paper)                    |     7.13            |
   | baseline (re-implementation)        |     8.000           |
   | baseline + CA (paper)               |     6.58            |
-  | baseline + CA (re-implementation)   |     1               |
+  | baseline + CA (re-implementation)   |     -               |
 
 ## Visualization 
 
