@@ -35,7 +35,7 @@ def create(limage, rimage, targets, net_type='win37_dep9'):
 		lrate = tf.placeholder(tf.float32, [], name='lrate')
 		with tf.name_scope("optimizer"):
 			global_step = tf.get_variable("global_step", [], initializer=tf.constant_initializer(0.0), trainable=False)
-			optimizer = tf.train.AdagradOptimizer(lrate)
+			optimizer = tf.train.AdamOptimizer(lrate) # Original paper: Adagrad()
 			train_step = slim.learning.create_train_op(loss, optimizer, global_step=global_step)
 
 			update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
@@ -49,7 +49,25 @@ def create(limage, rimage, targets, net_type='win37_dep9'):
 
 	return net
 
+def apply_cost_aggregation(cost_volume):
+    """Apply cost-aggregation post-processing to network predictions.
+    Performs an average pooling operation over raw network predictions to smoothen
+    the output.
+    Args:
+        cost_volume (tf.Tensor): cost volume predictions from network.
+    Returns:
+        cost_volume (tf.Tensor): aggregated cost volume.
+    """
+    # NOTE: Not ideal but better than zero padding, since we average.
+    cost_volume = tf.pad(cost_volume, tf.constant([[0, 0,], [2, 2,], [2, 2], [0, 0]]),
+                         "REFLECT")
 
+    return tf.layers.average_pooling2d(cost_volume,
+                                       pool_size=(5, 5),
+                                       strides=(1, 1),
+                                       padding='VALID',
+                                       data_format='channels_last')
+                                       
 def map_inner_product(lmap, rmap):
 	prod = tf.reduce_sum(tf.multiply(lmap, rmap), axis=3, name='map_inner_product')
 	
