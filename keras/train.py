@@ -10,7 +10,7 @@ flags = tf.app.flags
 
 flags.DEFINE_integer('batch_size', 128, 'Batch size.')
 flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-flags.DEFINE_string('model_dir', 'model', 'Trained network dir')
+flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
 flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
 flags.DEFINE_string('data_root', '/content/dl_stereo_matching/kitti_2015/training', 'training dataset dir')
 flags.DEFINE_string('util_root', '/content/dl_stereo_matching/preprocess/debug_15', 'Binary training files dir')
