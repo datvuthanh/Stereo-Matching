@@ -1,4 +1,7 @@
-import tensorflow as tf
+#import tensorflow as tf
+import tensorflow.compat.v1 as tf
+tf.disable_v2_behavior()
+
 import os
 import models.net_factory as nf
 import numpy as np
@@ -10,19 +13,19 @@ flags = tf.app.flags
 
 flags.DEFINE_integer('batch_size', 128, 'Batch size.')
 flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-flags.DEFINE_string('model_dir', 'train_win37', 'Trained network dir')
+flags.DEFINE_string('model_dir', 'model', 'Trained network dir')
 flags.DEFINE_string('out_dir', 'disp_images', 'output dir')
-flags.DEFINE_string('data_version', 'kitti2012', 'kitti2012 or kitti2015')
-flags.DEFINE_string('data_root', '', 'training dataset dir')
-flags.DEFINE_string('util_root', '', 'Binary training files dir')
+flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
+flags.DEFINE_string('data_root', '/content/dl_stereo_matching/kitti_2015/training', 'training dataset dir')
+flags.DEFINE_string('util_root', '/content/dl_stereo_matching/preprocess/debug_15', 'Binary training files dir')
 flags.DEFINE_string('net_type', 'win37_dep9', 'Network type: win37_dep9 pr win19_dep9')
 
 flags.DEFINE_integer('eval_size', 200, 'number of evaluation patchs per iteration')
 flags.DEFINE_integer('num_tr_img', 160, 'number of training images')
-flags.DEFINE_integer('num_val_img', 34, 'number of evaluation images')
+flags.DEFINE_integer('num_val_img', 40, 'number of evaluation images')
 flags.DEFINE_integer('patch_size', 37, 'training patch size')
 flags.DEFINE_integer('num_val_loc', 50000, 'number of validation locations')
-flags.DEFINE_integer('disp_range', 128, 'disparity range')
+flags.DEFINE_integer('disp_range', 201, 'disparity range')
 flags.DEFINE_integer('num_imgs', 5, 'Number of test images')
 flags.DEFINE_integer('start_id', 0, 'ID of first test image')
 
