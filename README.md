@@ -59,10 +59,10 @@ Iterations: 20000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
 Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
-![Predicted disparity](disp_images/step_40000/disp_map_000161_10_20000.png)
+![Predicted disparity](disp_images/step_40000/disp_map_000161_10_40000.png)
 
 ## Cost Aggregation 
 
 ### Average pooling method
 
-![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10_20000.png)
+![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10_40000.png)
