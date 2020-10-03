@@ -35,19 +35,24 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 
 ## Train
 
-    python3 train.py --data /kitti2015/training
+    python3 train.py --data_root /kitti2015/training --util_root preprocess/debug_15
 
 ## Test
 
-    python3 eval.py --data /kitti2015/training --checkpoint pretrained pretrained/win37_dep9.pkl
+    python3 train.py --data_root /kitti2015/training --util_root preprocess/debug_15 --phase evaluate
 
 ## Inference
 
-    python3 inference.py --data /kitti2015/testing --img_num 0
+    python3 inference.py --data_root /kitti2015/testing --util_root preprocess/debug_15 --model_dir checkpoint --out_dir disp_images --num_imgs 5
 
 
 ## Results
-Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
+![Left image](images/000161_10.png)
 
-![Left image](images/win37_dep9_left.png)
-![Predicted disparity](images/win37_dep9.png)
+Iterations: 5000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
+
+![Predicted disparity](predictions/disp_map_000161_10_5000.png)
+
+Iterations: 20000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
+
+![Predicted disparity](predictions/disp_map_000161_10_20000.png)
