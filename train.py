@@ -67,8 +67,8 @@ def train():
 		session = tf.InteractiveSession()
 		session.run(tf.global_variables_initializer())
 		saver = tf.train.Saver(max_to_keep=1)
-    		#saver = tf.train.import_meta_graph('/content/dl_stereo_matching/model/model.ckpt-3700.meta')
-		#saver.restore(session, tf.train.latest_checkpoint(FLAGS.model_dir))
+		# Load pretrained model here, we can use your checkpoint or my model
+		#saver.restore(session, tf.train.latest_checkpoint("path_to_pretrained_model") 
 
 		acc_loss = tf.placeholder(tf.float32, shape=())
 		loss_summary = tf.summary.scalar('loss', acc_loss)	
