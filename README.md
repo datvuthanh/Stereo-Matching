@@ -70,6 +70,19 @@ Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 ![Predicted disparity](disp_images/cost_aggregation/average_pooling/disp_map_000161_10.png)
 ### Semi-global matching method
 ![Predicted disparity](disp_images/cost_aggregation/sgm/semi.png)
+
+#### Quantitative results
+
+* To compare with results reported in paper, look at Table-5, column `Ours(37)`.
+
+
+  |                                     | 3-pixel error (%)   |
+  |-------------------------------------|:-------------------:|
+  | baseline (paper)                    |     7.13            |
+  | baseline (re-implementation)        |     8.000           |
+  | baseline + CA (paper)               |     6.58            |
+  | baseline + CA (re-implementation)   |     -----           |
+
 ## Visualization 
 
 ![Loss](results/loss.png)
