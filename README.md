@@ -47,7 +47,7 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 
 
 ## Results
-![Left image](images/000161_10.png)
+![Left image](predictions/000161_10.png)
 
 Iterations: 5000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
 
