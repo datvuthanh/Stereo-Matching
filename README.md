@@ -32,6 +32,8 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 3. cd preprocess
 4. octave preprocess.m
 
+## Computional Graph
+![Computional Graph](results/graph.png)
 
 ## Train
 
