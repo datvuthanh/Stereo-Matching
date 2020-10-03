@@ -13,11 +13,11 @@ flags = tf.app.flags
 
 flags.DEFINE_integer('batch_size', 128, 'Batch size.')
 flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-flags.DEFINE_string('model_dir', 'model', 'Trained network dir')
+flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
 flags.DEFINE_string('out_dir', 'disp_images', 'output dir')
 flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
-flags.DEFINE_string('data_root', '/content/dl_stereo_matching/kitti_2015/training', 'training dataset dir')
-flags.DEFINE_string('util_root', '/content/dl_stereo_matching/preprocess/debug_15', 'Binary training files dir')
+flags.DEFINE_string('data_root', '/content/Stereo-Matching/keras/kitti_2015/training', 'training dataset dir')
+flags.DEFINE_string('util_root', '/content/Stereo-Matching/keras/preprocess/debug_15', 'Binary training files dir')
 flags.DEFINE_string('net_type', 'win37_dep9', 'Network type: win37_dep9 pr win19_dep9')
 
 flags.DEFINE_integer('eval_size', 200, 'number of evaluation patchs per iteration')
@@ -28,6 +28,8 @@ flags.DEFINE_integer('num_val_loc', 50000, 'number of validation locations')
 flags.DEFINE_integer('disp_range', 201, 'disparity range')
 flags.DEFINE_integer('num_imgs', 5, 'Number of test images')
 flags.DEFINE_integer('start_id', 0, 'ID of first test image')
+flags.DEFINE_bool('cost_aggregation', True, 'Post processing')
+flags.DEFINE_bool('average_pooling', True, 'True: average pooling, False: Semi global matching')
 
 
 FLAGS = flags.FLAGS
@@ -87,17 +89,25 @@ with tf.Session() as session:
 
             map_width = limage_map.shape[2]
             unary_vol = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
-
             for loc in range(FLAGS.disp_range):
                 x_off = -loc
                 l = limage_map[:, :, max(0, -x_off): map_width,:]
                 r = rimage_map[:, :, 0: min(map_width, map_width + x_off),:]
                 res = session.run(map_prod, feed_dict={lmap: l, rmap: r})
-
+                #print("Inner product: ",res.shape)
                 unary_vol[:, max(0, -x_off): map_width, loc] = res[0, :, :]
-
-            print('Image %s processed.' % (i + 1))
-            pred = np.argmax(unary_vol, axis=2) * scale_factor
-
-
+            if FLAGS.cost_aggregation:
+              # We will use average pool 5x5 on original paper
+              if FLAGS.average_pooling:
+                print("Average pooling")
+                unary_vol = unary_vol.reshape((1, unary_vol.shape[0], unary_vol.shape[1], unary_vol.shape[2]))
+                unary_vol = nf.apply_cost_aggregation(unary_vol)
+                unary_vol = tf.squeeze(unary_vol)
+              # If not we will use semi global matching
+              else:
+                pass
+            pred = tf.argmax(unary_vol, axis=2)
+            # Convert tensor to array
+            pred = pred.eval() * scale_factor
             misc.imsave('%s/disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), pred)
+            print('Image %s processed.' % (i + 1))
