@@ -39,9 +39,9 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 
     python3 train.py --data_root /kitti2015/training --util_root preprocess/debug_15
 
-## Test
+## Evaluate
 
-    python3 train.py --data_root /kitti2015/training --util_root preprocess/debug_15 --phase evaluate
+    python3 evaluate.py --data_root /kitti2015/training --util_root preprocess/debug_15 
 
 ## Inference
 
