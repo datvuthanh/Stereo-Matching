@@ -64,7 +64,7 @@ if __name__ == '__main__':
   flags.DEFINE_integer('patch_size', 37, 'training patch size')
   flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
   flags.DEFINE_integer('disp_range', 201, 'disparity range')
-  flags.DEFINE_integer('num_imgs', 3, 'Number of test images')
+  flags.DEFINE_integer('num_imgs', 5, 'Number of test images')
   flags.DEFINE_integer('start_id', 0, 'ID of first test image')
   flags.DEFINE_bool('cost_aggregation', True, 'Cost aggregation')
   flags.DEFINE_bool('average_pooling', True, 'True: average pooling, False: Semi global matching')
@@ -126,10 +126,8 @@ if __name__ == '__main__':
       rimage_map = right_model(rinput)
       
       # Test
-      ls = left_model(linput)
-      rs = right_model(linput)
-      print("LS: ",ls)
-      print("RS:", rs)
+      #print("Left model weights",left_model.get_weights()[0])
+      #print("Right model weights",right_model.get_weights()[0])
 
       map_width = limage_map.shape[2]
       cost_volume = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
