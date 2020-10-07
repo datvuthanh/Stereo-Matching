@@ -37,6 +37,9 @@ def apply_cost_aggregation(cost_volume):
     # NOTE: Not ideal but better than zero padding, since we average.
     cost_volume = tf.pad(cost_volume, tf.constant([[0, 0,], [2, 2,], [2, 2], [0, 0]]),
                          "REFLECT")
+    # Convert float64 to float32
+    cost_volume = tf.cast(cost_volume,dtype=tf.float32) 
+    # Average-pooling                 
     last_layer = tf.keras.layers.AveragePooling2D(pool_size=(5, 5),
                                        strides=(1, 1),
                                        padding='VALID',
