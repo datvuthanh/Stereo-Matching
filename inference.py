@@ -131,7 +131,7 @@ if __name__ == '__main__':
 
       map_width = limage_map.shape[2]
       cost_volume = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
-      print("Cost volume shape: ",cost_volume.shape)
+      #print("Cost volume shape: ",cost_volume.shape)
       for loc in range(FLAGS.disp_range):
           x_off = -loc
           l = limage_map[:, :, max(0, -x_off): map_width,:]
