@@ -1,8 +1,7 @@
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
 import tensorflow as tf
-#kernel_initializer=tf.keras.initializers.glorot_normal(),
-#                         kernel_regularizer=tf.keras.regularizers.l2(0.01)
+
 def base_model(input_shape):
   inputs = Input(shape=input_shape)
   conv1 = Conv2D(32, (5,5),activation='relu',padding='valid')(inputs)
