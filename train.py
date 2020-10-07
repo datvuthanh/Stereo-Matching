@@ -13,14 +13,15 @@ def create_model(left_input,right_input):
   left_model = base_model(left_input,reuse=False)
   right_model = base_model(right_input,reuse=True) # Use weight from left_model
 
+  #print("Weight from: ",left_model.get_weights()[0])
   # Feature extractor last layer of model
-  prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
+  # prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
 
-  flatten = tf.keras.layers.Flatten()
-  prod_flatten = flatten(prod)
-  # Final model
-  final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
-  return left_model,right_model,final_model
+  # flatten = tf.keras.layers.Flatten()
+  # prod_flatten = flatten(prod)
+  # # Final model
+  # final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
+  return left_model,right_model
 
 def map_inner_product(lmap, rmap):
   #prod = tf.reduce_sum(tf.multiply(lmap, rmap), axis=3, name='map_inner_product') # Batch x 1 x 201
@@ -98,7 +99,7 @@ if __name__ == '__main__':
   right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
   
   # Create Finally model
-  left_model,right_model,final_model = create_model(left_input,right_input)
+  left_model,right_model = create_model(left_input,right_input)
   
   # Plot model
   #plot_model(final_model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
@@ -122,7 +123,11 @@ if __name__ == '__main__':
     lpatch, rpatch, patch_targets = dhandler.next_batch()  
     grads, t_loss = grads_fn(lpatch,rpatch,patch_targets,training=True)
     loss_history.append(t_loss.numpy().mean())
-    optimizer.apply_gradients(zip(grads, left_model.trainable_variables + right_model.trainable_variables))
+    optimizer.apply_gradients(zip(grads, left_model.trainable_variables))
+    # After use optimizer for left model, we set weight of right model = left model
+    # You can comment this line 
+    right_model.set_weights(left_model.get_weights())
+    # Add global step += 1
     ckpt.step.assign_add(1)
     if int(ckpt.step) % 100 == 0:
       save_path = manager.save()
