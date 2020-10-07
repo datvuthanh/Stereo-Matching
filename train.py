@@ -132,7 +132,7 @@ if __name__ == '__main__':
     if int(ckpt.step) == 24000:
       learning_rate = learning_rate / 5.
       optimizer.lr.assign(learning_rate)
-    elif int(ckpt.step) > 24000 and (it - 24000) %  8000 == 0:
+    elif int(ckpt.step) > 24000 and (int(ckpt.step) - 24000) %  8000 == 0:
       learning_rate = learning_rate / 5.      
       optimizer.lr.assign(learning_rate)
   
