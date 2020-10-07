@@ -12,18 +12,18 @@ from sgm import *
 from models.model import base_model
 
 def create_model(left_input,right_input):
-  left_model = base_model(left_input,reuse=False)
-  right_model = base_model(right_input,reuse=True)
+  left_model = base_model(left_input)
+  right_model = base_model(right_input)
 
   # Feature extractor last layer of model
-  prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
+  # prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
 
-  flatten = tf.keras.layers.Flatten()
-  prod_flatten = flatten(prod)
-  # Final model
-  final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
+  # flatten = tf.keras.layers.Flatten()
+  # prod_flatten = flatten(prod)
+  # # Final model
+  # final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
 
-  return left_model,right_model,final_model
+  return left_model,right_model
 
 def apply_cost_aggregation(cost_volume):
     """Apply cost-aggregation post-processing to network predictions.
@@ -90,7 +90,7 @@ if __name__ == '__main__':
   right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
   
   # Create Finally model
-  left_model,right_model,final_model = create_model(left_input,right_input)
+  left_model,right_model = create_model(left_input,right_input)
 
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
