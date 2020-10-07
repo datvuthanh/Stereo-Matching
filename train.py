@@ -10,8 +10,8 @@ from tensorflow.keras.models import Model
 
 def create_model(left_input,right_input):
 
-  left_model = base_model(left_input,reuse=False)
-  right_model = base_model(right_input,reuse=True) # Use weight from left_model
+  left_model = base_model(left_input)
+  right_model = base_model(right_input) 
 
   #print("Weight from: ",left_model.get_weights()[0])
   # Feature extractor last layer of model
@@ -58,8 +58,8 @@ if __name__ == '__main__':
   flags = tf.compat.v1.app.flags
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
-  flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-  flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
+  flags.DEFINE_integer('num_iter', 100000, 'Total training iterations')
+  flags.DEFINE_string('model_dir', 'new_checkpoint', 'Trained network dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
   flags.DEFINE_string('util_root', '/content/Stereo-Matching/preprocess/debug_15', 'Binary training files dir')
@@ -125,7 +125,6 @@ if __name__ == '__main__':
     loss_history.append(t_loss.numpy().mean())
     optimizer.apply_gradients(zip(grads, left_model.trainable_variables))
     # After use optimizer for left model, we set weight of right model = left model
-    # You can comment this line 
     right_model.set_weights(left_model.get_weights())
     # Add global step += 1
     ckpt.step.assign_add(1)
@@ -140,7 +139,6 @@ if __name__ == '__main__':
     elif int(ckpt.step) > 24000 and (int(ckpt.step) - 24000) %  8000 == 0:
       learning_rate = learning_rate / 5.      
       optimizer.lr.assign(learning_rate)
-  
   # plt.plot(loss_history)
   # plt.xlabel('Batch #')
   # plt.ylabel('Loss [entropy]')
