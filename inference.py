@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
-from model import base_model
 import os
 import numpy as np
 from data_handler import Data_handler
@@ -10,6 +9,7 @@ from tensorflow.keras import optimizers
 import matplotlib.pyplot as plt
 from scipy import misc
 from sgm import *
+from models.model import base_model
 
 def create_model(left_input,right_input):
   left_model = base_model(left_input,reuse=False)
@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
   flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-  flags.DEFINE_string('model_dir', 'new', 'Trained network dir')
+  flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
   flags.DEFINE_string('out_dir', 'disp_images', 'output dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
@@ -94,7 +94,7 @@ if __name__ == '__main__':
 
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
-  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=left_model)
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=[left_model,right_model])
   manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
 
   ckpt.restore(manager.latest_checkpoint)
@@ -124,6 +124,12 @@ if __name__ == '__main__':
       # Get shape of output model
       limage_map = left_model(linput)
       rimage_map = right_model(rinput)
+      
+      # Test
+      ls = left_model(linput)
+      rs = right_model(linput)
+      print("LS: ",ls)
+      print("RS:", rs)
 
       map_width = limage_map.shape[2]
       cost_volume = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
