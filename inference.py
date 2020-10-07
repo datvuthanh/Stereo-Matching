@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
-from model import base_model
 import os
 import numpy as np
 from data_handler import Data_handler
@@ -10,20 +9,21 @@ from tensorflow.keras import optimizers
 import matplotlib.pyplot as plt
 from scipy import misc
 from sgm import *
+from models.model import base_model
 
 def create_model(left_input,right_input):
-  left_model = base_model(left_input,reuse=False)
-  right_model = base_model(right_input,reuse=True)
+  left_model = base_model(left_input)
+  right_model = base_model(right_input)
 
   # Feature extractor last layer of model
-  prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
+  # prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
 
-  flatten = tf.keras.layers.Flatten()
-  prod_flatten = flatten(prod)
-  # Final model
-  final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
+  # flatten = tf.keras.layers.Flatten()
+  # prod_flatten = flatten(prod)
+  # # Final model
+  # final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
 
-  return left_model,right_model,final_model
+  return left_model,right_model
 
 def apply_cost_aggregation(cost_volume):
     """Apply cost-aggregation post-processing to network predictions.
@@ -37,6 +37,9 @@ def apply_cost_aggregation(cost_volume):
     # NOTE: Not ideal but better than zero padding, since we average.
     cost_volume = tf.pad(cost_volume, tf.constant([[0, 0,], [2, 2,], [2, 2], [0, 0]]),
                          "REFLECT")
+    # Convert float64 to float32
+    cost_volume = tf.cast(cost_volume,dtype=tf.float32) 
+    # Average-pooling                 
     last_layer = tf.keras.layers.AveragePooling2D(pool_size=(5, 5),
                                        strides=(1, 1),
                                        padding='VALID',
@@ -48,7 +51,7 @@ if __name__ == '__main__':
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
   flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-  flags.DEFINE_string('model_dir', 'new', 'Trained network dir')
+  flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
   flags.DEFINE_string('out_dir', 'disp_images', 'output dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
@@ -61,7 +64,7 @@ if __name__ == '__main__':
   flags.DEFINE_integer('patch_size', 37, 'training patch size')
   flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
   flags.DEFINE_integer('disp_range', 201, 'disparity range')
-  flags.DEFINE_integer('num_imgs', 3, 'Number of test images')
+  flags.DEFINE_integer('num_imgs', 5, 'Number of test images')
   flags.DEFINE_integer('start_id', 0, 'ID of first test image')
   flags.DEFINE_bool('cost_aggregation', True, 'Cost aggregation')
   flags.DEFINE_bool('average_pooling', True, 'True: average pooling, False: Semi global matching')
@@ -87,11 +90,11 @@ if __name__ == '__main__':
   right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
   
   # Create Finally model
-  left_model,right_model,final_model = create_model(left_input,right_input)
+  left_model,right_model = create_model(left_input,right_input)
 
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
-  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=left_model)
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=[left_model,right_model])
   manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
 
   ckpt.restore(manager.latest_checkpoint)
@@ -121,10 +124,14 @@ if __name__ == '__main__':
       # Get shape of output model
       limage_map = left_model(linput)
       rimage_map = right_model(rinput)
+      
+      # Test
+      #print("Left model weights",left_model.get_weights()[0])
+      #print("Right model weights",right_model.get_weights()[0])
 
       map_width = limage_map.shape[2]
       cost_volume = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
-      print("Cost volume shape: ",cost_volume.shape)
+      #print("Cost volume shape: ",cost_volume.shape)
       for loc in range(FLAGS.disp_range):
           x_off = -loc
           l = limage_map[:, :, max(0, -x_off): map_width,:]

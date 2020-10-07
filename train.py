@@ -1,27 +1,27 @@
 import tensorflow as tf
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
-from model import base_model
+import matplotlib.pyplot as plt
 import os
 import numpy as np
 from data_handler import Data_handler
 from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
-import matplotlib.pyplot as plt
+from models.model import base_model
+from tensorflow.keras.models import Model
 
 def create_model(left_input,right_input):
 
-  left_model = base_model(left_input,reuse=False)
-  right_model = base_model(right_input,reuse=True) # Use weight from left_model
+  left_model = base_model(left_input)
+  right_model = base_model(right_input) 
 
+  #print("Weight from: ",left_model.get_weights()[0])
   # Feature extractor last layer of model
-  prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
+  # prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
 
-  flatten = tf.keras.layers.Flatten()
-  prod_flatten = flatten(prod)
-  # Final model
-  final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
-  return left_model,right_model,final_model
+  # flatten = tf.keras.layers.Flatten()
+  # prod_flatten = flatten(prod)
+  # # Final model
+  # final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
+  return left_model,right_model
 
 def map_inner_product(lmap, rmap):
   #prod = tf.reduce_sum(tf.multiply(lmap, rmap), axis=3, name='map_inner_product') # Batch x 1 x 201
@@ -52,14 +52,14 @@ def grads_fn(left_patches,right_patches, patch_targets, training=None):
     
     with tf.GradientTape() as tape:
         loss = loss_fn(left_patches,right_patches, patch_targets, training)
-    return tape.gradient(loss, left_model.trainable_variables), loss
+    return tape.gradient(loss, left_model.trainable_variables+right_model.trainable_variables), loss
 
 if __name__ == '__main__':
   flags = tf.compat.v1.app.flags
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
-  flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-  flags.DEFINE_string('model_dir', 'new', 'Trained network dir')
+  flags.DEFINE_integer('num_iter', 100000, 'Total training iterations')
+  flags.DEFINE_string('model_dir', 'new_checkpoint', 'Trained network dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
   flags.DEFINE_string('util_root', '/content/Stereo-Matching/preprocess/debug_15', 'Binary training files dir')
@@ -99,7 +99,7 @@ if __name__ == '__main__':
   right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
   
   # Create Finally model
-  left_model,right_model,final_model = create_model(left_input,right_input)
+  left_model,right_model = create_model(left_input,right_input)
   
   # Plot model
   #plot_model(final_model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
@@ -109,7 +109,7 @@ if __name__ == '__main__':
   # Create optimizer and checkpoint
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
-  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=left_model)
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=[left_model,right_model])
   manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
 
   ckpt.restore(manager.latest_checkpoint)
@@ -124,6 +124,9 @@ if __name__ == '__main__':
     grads, t_loss = grads_fn(lpatch,rpatch,patch_targets,training=True)
     loss_history.append(t_loss.numpy().mean())
     optimizer.apply_gradients(zip(grads, left_model.trainable_variables))
+    # After use optimizer for left model, we set weight of right model = left model
+    right_model.set_weights(left_model.get_weights())
+    # Add global step += 1
     ckpt.step.assign_add(1)
     if int(ckpt.step) % 100 == 0:
       save_path = manager.save()
@@ -133,10 +136,9 @@ if __name__ == '__main__':
     if int(ckpt.step) == 24000:
       learning_rate = learning_rate / 5.
       optimizer.lr.assign(learning_rate)
-    elif int(ckpt.step) > 24000 and (it - 24000) %  8000 == 0:
+    elif int(ckpt.step) > 24000 and (int(ckpt.step) - 24000) %  8000 == 0:
       learning_rate = learning_rate / 5.      
       optimizer.lr.assign(learning_rate)
-  
   # plt.plot(loss_history)
   # plt.xlabel('Batch #')
   # plt.ylabel('Loss [entropy]')
