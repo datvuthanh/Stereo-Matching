@@ -9,8 +9,8 @@ from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
 
 def create_model(left_input,right_input):
-  left_model = base_model(left_input,reuse=False)
-  right_model = base_model(right_input,reuse=True)
+  left_model = base_model(left_input)
+  right_model = base_model(right_input)
 
   # # Feature extractor last layer of model
   # lbranch = tf.squeeze(left_model.output, [1])
