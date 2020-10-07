@@ -6,6 +6,7 @@ from data_handler import Data_handler
 from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
 from models.model import base_model
+from tensorflow.keras.models import Model
 
 def create_model(left_input,right_input):
 
