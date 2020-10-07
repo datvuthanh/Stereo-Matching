@@ -51,7 +51,7 @@ def grads_fn(left_patches,right_patches, patch_targets, training=None):
     
     with tf.GradientTape() as tape:
         loss = loss_fn(left_patches,right_patches, patch_targets, training)
-    return tape.gradient(loss, left_model.trainable_variables), loss
+    return tape.gradient(loss, left_model.trainable_variables+right_model.trainable_variables), loss
 
 if __name__ == '__main__':
   flags = tf.compat.v1.app.flags
@@ -108,7 +108,7 @@ if __name__ == '__main__':
   # Create optimizer and checkpoint
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
-  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=left_model)
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=[left_model,right_model])
   manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
 
   ckpt.restore(manager.latest_checkpoint)
@@ -122,7 +122,7 @@ if __name__ == '__main__':
     lpatch, rpatch, patch_targets = dhandler.next_batch()  
     grads, t_loss = grads_fn(lpatch,rpatch,patch_targets,training=True)
     loss_history.append(t_loss.numpy().mean())
-    optimizer.apply_gradients(zip(grads, left_model.trainable_variables))
+    optimizer.apply_gradients(zip(grads, left_model.trainable_variables + right_model.trainable_variables))
     ckpt.step.assign_add(1)
     if int(ckpt.step) % 100 == 0:
       save_path = manager.save()
