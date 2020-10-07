@@ -1,13 +1,11 @@
 import tensorflow as tf
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
-from model import base_model
+import matplotlib.pyplot as plt
 import os
 import numpy as np
 from data_handler import Data_handler
 from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
-import matplotlib.pyplot as plt
+from models.model import base_model
 
 def create_model(left_input,right_input):
 
