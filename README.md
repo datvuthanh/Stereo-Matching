@@ -1,6 +1,6 @@
-# Efficient-Deep-Learning-for-Stereo-Matching-Keras
+# Efficient-Deep-Learning-for-Stereo-Matching-Tensorflow 2
 
-This is a Keras version re-implementation of Luo, W., & Schwing, A. G. (n.d.). Efficient Deep Learning for Stereo Matching.
+This is a Tensorflow 2.x version re-implementation of Luo, W., & Schwing, A. G. (n.d.). Efficient Deep Learning for Stereo Matching.
 (https://www.cs.toronto.edu/~urtasun/publications/luo_etal_cvpr16.pdf)
 
 ### Setup data folders

@@ -1,139 +1,142 @@
-#import tensorflow as tf
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
+from model import base_model
 import os
-import models.net_factory as nf
 import numpy as np
 from data_handler import Data_handler
-import tensorflow.compat.v1 as tf
-tf.disable_v2_behavior()
+from keras.utils.vis_utils import plot_model
+from tensorflow.keras import optimizers
+import matplotlib.pyplot as plt
 
-flags = tf.app.flags
+def create_model(left_input,right_input):
 
-flags.DEFINE_integer('batch_size', 128, 'Batch size.')
-flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
-flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
-flags.DEFINE_string('data_root', '/content/dl_stereo_matching/kitti_2015/training', 'training dataset dir')
-flags.DEFINE_string('util_root', '/content/dl_stereo_matching/preprocess/debug_15', 'Binary training files dir')
-flags.DEFINE_string('net_type', 'win37_dep9', 'Network type: win37_dep9 pr win19_dep9')
+  left_model = base_model(left_input,reuse=False)
+  right_model = base_model(right_input,reuse=True) # Use weight from left_model
 
-flags.DEFINE_integer('eval_size', 200, 'number of evaluation patchs per iteration')
-flags.DEFINE_integer('num_tr_img', 160, 'number of training images')
-flags.DEFINE_integer('num_val_img', 40, 'number of evaluation images')
-flags.DEFINE_integer('patch_size', 37, 'training patch size')
-flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
-flags.DEFINE_integer('disp_range', 201, 'disparity range')
-flags.DEFINE_string('phase', 'train', 'train or evaluate')
+  # Feature extractor last layer of model
+  prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
 
+  flatten = tf.keras.layers.Flatten()
+  prod_flatten = flatten(prod)
+  # Final model
+  final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
+  return left_model,right_model,final_model
 
-FLAGS = flags.FLAGS
+def map_inner_product(lmap, rmap):
+  #prod = tf.reduce_sum(tf.multiply(lmap, rmap), axis=3, name='map_inner_product') # Batch x 1 x 201
+  #print(prod)
+  lbranch2 = tf.squeeze(lmap, [1])
+  rbranch2 = tf.transpose(tf.squeeze(rmap, [1]), perm=[0, 2, 1])
+  prod = tf.matmul(lbranch2, rbranch2)
+  #print(prod)
+  flatten = tf.keras.layers.Flatten()
+  prod_flatten = flatten(prod)
+  return prod_flatten
 
-np.random.seed(123)
+def call(left_input, right_input, training=None, mask=None, inference=False):
+    left_feature = left_model(left_input,training=training)
+    right_feature = right_model(right_input,training=training)
+    inner_product = map_inner_product(left_feature,right_feature)
 
-dhandler = Data_handler(data_version=FLAGS.data_version, 
-	data_root=FLAGS.data_root,  
-	util_root=FLAGS.util_root, 
-	num_tr_img=FLAGS.num_tr_img, 
-	num_val_img=FLAGS.num_val_img, 
-	num_val_loc=FLAGS.num_val_loc, 
-	batch_size=FLAGS.batch_size, 
-	patch_size=FLAGS.patch_size, 
-	disp_range=FLAGS.disp_range)
+    return inner_product
 
+def loss_fn(left_patches,right_patches, patch_targets,training=None):
+    """Loss function."""
+    inner_product = call(left_patches,right_patches,training=training)
+    loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=patch_targets, logits=inner_product), name='loss')
+    return loss
 
-if FLAGS.data_version == 'kitti2012':
-	num_channels = 1
-elif FLAGS.data_version == 'kitti2015':
-	num_channels = 3
-else:
-	sys.exit('data_version should be either kitti2012 or kitti2015')
+def grads_fn(left_patches,right_patches, patch_targets, training=None):
+    """Compute loss and gradients."""
+    
+    with tf.GradientTape() as tape:
+        loss = loss_fn(left_patches,right_patches, patch_targets, training)
+    return tape.gradient(loss, left_model.trainable_variables), loss
 
+if __name__ == '__main__':
+  flags = tf.compat.v1.app.flags
 
-def train():
-	if not os.path.exists(FLAGS.model_dir):
-		os.makedirs(FLAGS.model_dir)
+  flags.DEFINE_integer('batch_size', 128, 'Batch size.')
+  flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
+  flags.DEFINE_string('model_dir', 'new', 'Trained network dir')
+  flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
+  flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
+  flags.DEFINE_string('util_root', '/content/Stereo-Matching/preprocess/debug_15', 'Binary training files dir')
+  flags.DEFINE_string('net_type', 'win37_dep9', 'Network type: win37_dep9 pr win19_dep9')
 
-
-	g = tf.Graph()
-	with g.as_default():
-		
-		limage = tf.placeholder(tf.float32, [None, FLAGS.patch_size, FLAGS.patch_size, num_channels], name='limage')
-		rimage = tf.placeholder(tf.float32, [None, FLAGS.patch_size, FLAGS.patch_size + FLAGS.disp_range - 1, num_channels], name='rimage')
-		targets = tf.placeholder(tf.float32, [None, FLAGS.disp_range], name='targets')
-
-		snet = nf.create(limage, rimage, targets, FLAGS.net_type)
-
-		loss = snet['loss']
-		train_step = snet['train_step']
-		session = tf.InteractiveSession()
-		session.run(tf.global_variables_initializer())
-		saver = tf.train.Saver(max_to_keep=1)
-		# Load pretrained model here, we can use your checkpoint or my model
-		#saver.restore(session, tf.train.latest_checkpoint("path_to_pretrained_model") 
-
-		acc_loss = tf.placeholder(tf.float32, shape=())
-		loss_summary = tf.summary.scalar('loss', acc_loss)	
-		train_writer = tf.summary.FileWriter(FLAGS.model_dir + '/training', g)
-
-		saver = tf.train.Saver(max_to_keep=1)
-		losses = []
-		summary_index = 1
-		lrate = 1e-2
-
-		for it in range(1, FLAGS.num_iter):
-			lpatch, rpatch, patch_targets = dhandler.next_batch()
-
-			train_dict = {limage:lpatch, rimage:rpatch, targets:patch_targets, 
-						snet['is_training']: True, snet['lrate']: lrate}
-			_, mini_loss = session.run([train_step, loss], feed_dict=train_dict)
-			losses.append(mini_loss)
-
-			if it % 100 == 0:
-				print('Loss at step: %d: %.6f' % (it, mini_loss))
-				saver.save(session, os.path.join(FLAGS.model_dir, 'model.ckpt'), global_step=snet['global_step'])
-				train_summary = session.run(loss_summary, 
-					feed_dict={acc_loss: np.mean(losses)})
-				train_writer.add_summary(train_summary, summary_index)
-				summary_index += 1
-				train_writer.flush()
-				losses = []
-
-			if it == 24000:
-				lrate = lrate / 5.
-			elif it > 24000 and (it - 24000) %  8000 == 0:
-				lrate = lrate / 5.
-
-def evaluate():
-	lpatch, rpatch, patch_targets = dhandler.evaluate()
-	labels = np.argmax(patch_targets, axis=1)
-
-	with tf.Session() as session:
-
-		limage = tf.placeholder(tf.float32, [None, FLAGS.patch_size, FLAGS.patch_size, num_channels], name='limage')
-		rimage = tf.placeholder(tf.float32, [None, FLAGS.patch_size, FLAGS.patch_size + FLAGS.disp_range - 1, num_channels], name='rimage')
-		targets = tf.placeholder(tf.float32, [None, FLAGS.disp_range], name='targets')
-
-		snet = nf.create(limage, rimage, targets, FLAGS.net_type)
-    #snet.load_weights('')
-		prod = snet['inner_product']
-		predicted = tf.argmax(prod, axis=1)
-		acc_count = 0
-
-		saver = tf.train.Saver()
-		saver.restore(session, tf.train.latest_checkpoint(FLAGS.model_dir))
-
-		for i in range(0, lpatch.shape[0], FLAGS.eval_size):
-			eval_dict = {limage:lpatch[i: i + FLAGS.eval_size], 
-				rimage:rpatch[i: i + FLAGS.eval_size], snet['is_training']: False}
-			pred = session.run([predicted], feed_dict=eval_dict)
-			acc_count += np.sum(np.abs(pred - labels[i: i + FLAGS.eval_size]) <= 3)
-			print('iter. %d finished, with %d correct (3-pixel error)' % (i + 1, acc_count))
-
-		print('accuracy: %.3f' % ((acc_count / lpatch.shape[0]) * 100))
+  flags.DEFINE_integer('eval_size', 200, 'number of evaluation patchs per iteration')
+  flags.DEFINE_integer('num_tr_img', 160, 'number of training images')
+  flags.DEFINE_integer('num_val_img', 40, 'number of evaluation images')
+  flags.DEFINE_integer('patch_size', 37, 'training patch size')
+  flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
+  flags.DEFINE_integer('disp_range', 201, 'disparity range')
+  flags.DEFINE_string('phase', 'train', 'train or evaluate')
 
 
-if FLAGS.phase == 'train':
-	train()
-elif FLAGS.phase == 'evaluate': 
-	evaluate()
-else:
-	sys.exit('FLAGS.phase = train or evaluate')
+  FLAGS = flags.FLAGS
+
+  np.random.seed(123)
+
+  # Load Dataset
+  dhandler = Data_handler(data_version=FLAGS.data_version, 
+    data_root=FLAGS.data_root,  
+    util_root=FLAGS.util_root, 
+    num_tr_img=FLAGS.num_tr_img, 
+    num_val_img=FLAGS.num_val_img, 
+    num_val_loc=FLAGS.num_val_loc, 
+    batch_size=FLAGS.batch_size, 
+    patch_size=FLAGS.patch_size, 
+    disp_range=FLAGS.disp_range)  
+  
+  # Create left model, right model
+  if FLAGS.data_version == 'kitti2015':
+      num_channels = 3
+  elif FLAGS.data_version == 'kitti2012':
+      num_channels = 1
+
+  left_input = (FLAGS.patch_size,FLAGS.patch_size,num_channels)
+  right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
+  
+  # Create Finally model
+  left_model,right_model,final_model = create_model(left_input,right_input)
+  
+  # Plot model
+  #plot_model(final_model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
+  #final_model.summary()
+
+
+  # Create optimizer and checkpoint
+  learning_rate = 0.01
+  optimizer = optimizers.Adam(learning_rate)
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=left_model)
+  manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
+
+  ckpt.restore(manager.latest_checkpoint)
+  if manager.latest_checkpoint:
+    print("Restored from {}".format(manager.latest_checkpoint))
+  else:
+    print("Initializing from scratch.")
+
+  loss_history = []
+  for _ in range(FLAGS.num_iter):
+    lpatch, rpatch, patch_targets = dhandler.next_batch()  
+    grads, t_loss = grads_fn(lpatch,rpatch,patch_targets,training=True)
+    loss_history.append(t_loss.numpy().mean())
+    optimizer.apply_gradients(zip(grads, left_model.trainable_variables))
+    ckpt.step.assign_add(1)
+    if int(ckpt.step) % 100 == 0:
+      save_path = manager.save()
+      print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
+      print('Loss at step: %d: %.6f' % (int(ckpt.step), t_loss))
+    
+    if int(ckpt.step) == 24000:
+      learning_rate = learning_rate / 5.
+      optimizer.lr.assign(learning_rate)
+    elif int(ckpt.step) > 24000 and (it - 24000) %  8000 == 0:
+      learning_rate = learning_rate / 5.      
+      optimizer.lr.assign(learning_rate)
+  
+  # plt.plot(loss_history)
+  # plt.xlabel('Batch #')
+  # plt.ylabel('Loss [entropy]')
