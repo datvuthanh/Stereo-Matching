@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Conv2D, BatchNormalization
-from model import base_model
+from models.model import base_model
 import os
 import numpy as np
 from data_handler import Data_handler
@@ -9,20 +9,20 @@ from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
 
 def create_model(left_input,right_input):
-  left_model = base_model(left_input)
-  right_model = base_model(right_input)
+  left_model = base_model(left_input,reuse=False)
+  right_model = base_model(right_input,reuse=True)
 
-  # Feature extractor last layer of model
-  lbranch = tf.squeeze(left_model.output, [1])
-  rbranch = tf.transpose(tf.squeeze(right_model.output, [1]), perm=[0, 2, 1])
-  # Inner product
-  prod = tf.matmul(lbranch, rbranch)
-  flatten = tf.keras.layers.Flatten()
-  prod_flatten = flatten(prod)
-  # Final model
-  final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
+  # # Feature extractor last layer of model
+  # lbranch = tf.squeeze(left_model.output, [1])
+  # rbranch = tf.transpose(tf.squeeze(right_model.output, [1]), perm=[0, 2, 1])
+  # # Inner product
+  # prod = tf.matmul(lbranch, rbranch)
+  # flatten = tf.keras.layers.Flatten()
+  # prod_flatten = flatten(prod)
+  # # Final model
+  # final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
 
-  return left_model,right_model,final_model
+  return left_model,right_model
 
 def map_inner_product(lmap, rmap):
   #prod = tf.reduce_sum(tf.multiply(lmap, rmap), axis=3, name='map_inner_product') # Batch x 1 x 201
@@ -58,7 +58,7 @@ def evaluate():
   labels = np.argmax(patch_targets,axis=1)
   acc_count = 0
   for i in range(0, lpatch.shape[0]):
-    inner_product = final_model([lpatch,rpatch])
+    inner_product = call(lpatch,rpatch,training=False)
     pred = tf.argmax(inner_product,axis = 1)
     acc_count += np.sum(np.abs(pred - labels))
     print("Iter: %d finished, with %d correct (3-pizel error)" % (i + 1, acc_count))
@@ -105,7 +105,7 @@ if __name__ == '__main__':
   right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
   
   # Create Finally model
-  left_model,right_model,final_model = create_model(left_input,right_input)
+  left_model,right_model = create_model(left_input,right_input)
   
   # Plot model
   #plot_model(final_model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
@@ -115,8 +115,8 @@ if __name__ == '__main__':
   # Create optimizer and checkpoint
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
-  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=final_model)
-  manager = tf.train.CheckpointManager(ckpt, './eff_sm', max_to_keep=3)
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=[left_model,right_model])
+  manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
 
   ckpt.restore(manager.latest_checkpoint)
   if manager.latest_checkpoint:
