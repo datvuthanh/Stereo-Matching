@@ -11,20 +11,6 @@ from scipy import misc
 from sgm import *
 from models.model import base_model
 
-def create_model(left_input,right_input):
-  left_model = base_model(left_input)
-  right_model = base_model(right_input)
-
-  # Feature extractor last layer of model
-  # prod = tf.reduce_sum(tf.multiply(left_model.output, right_model.output), axis=3, name='map_inner_product') # Batch x 1 x 201
-
-  # flatten = tf.keras.layers.Flatten()
-  # prod_flatten = flatten(prod)
-  # # Final model
-  # final_model = Model(inputs=[left_model.input, right_model.input],outputs=prod_flatten)
-
-  return left_model,right_model
-
 def apply_cost_aggregation(cost_volume):
     """Apply cost-aggregation post-processing to network predictions.
     Performs an average pooling operation over raw network predictions to smoothen
@@ -51,7 +37,7 @@ if __name__ == '__main__':
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
   flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
-  flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
+  flags.DEFINE_string('model_dir', 'new_checkpoint', 'Trained network dir')
   flags.DEFINE_string('out_dir', 'disp_images', 'output dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
@@ -86,15 +72,12 @@ if __name__ == '__main__':
   if not os.path.exists(FLAGS.out_dir):
           os.makedirs(FLAGS.out_dir)
 
-  left_input = (FLAGS.patch_size,FLAGS.patch_size,num_channels)
-  right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
-  
   # Create Finally model
-  left_model,right_model = create_model(left_input,right_input)
+  model = base_model((None,None,3))
 
   learning_rate = 0.01
   optimizer = optimizers.Adam(learning_rate)
-  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=[left_model,right_model])
+  ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=model)
   manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
 
   ckpt.restore(manager.latest_checkpoint)
@@ -122,9 +105,9 @@ if __name__ == '__main__':
       rinput = rinput.reshape(1, rinput.shape[0], rinput.shape[1], num_channels)      
 
       # Get shape of output model
-      limage_map = left_model(linput)
-      rimage_map = right_model(rinput)
-      
+      limage_map = model(linput,training=False)
+      rimage_map = model(rinput,training=False)
+
       # Test
       #print("Left model weights",left_model.get_weights()[0])
       #print("Right model weights",right_model.get_weights()[0])
