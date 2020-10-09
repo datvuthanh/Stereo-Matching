@@ -143,6 +143,11 @@ if __name__ == '__main__':
       pred = tf.argmax(cost_volume, axis=2)
       # Convert tensor to array
       pred = pred.numpy() * scale_factor
+
+      # 
+      disp_targets = disp_targets[0:pred.shape[0], 0:pred.shape[1]]
+      print("PRED: ",pred)
+      print("Targets: ", disp_targets)
       # if FLAGS.post_processing:
       #   # Applying median filter size 3x3
       #   pred = cv2.medianBlur(pred,(3,3))
