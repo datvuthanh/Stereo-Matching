@@ -25,6 +25,9 @@ class Data_handler:
         self.tr_ptr = 0
         self.curr_epoch = 0
 
+        # Stored img id for validation dataset
+        self.img_id_arr = []
+        #
         self.file_ids = np.fromfile(os.path.join(util_root, 'myPerm.bin'), '<f4')
         self.tr_loc = np.fromfile(('%s/tr_%d_%d_%d.bin') % 
             (util_root, num_tr_img, self.half_patch, self.half_range), '<f4').reshape(-1, 5).astype(int)
@@ -98,6 +101,9 @@ class Data_handler:
 
             img_id, loc_type, center_x, center_y, right_center_x = self.val_loc[self.val_perm[i], 0], self.val_loc[self.val_perm[i], 1], self.val_loc[self.val_perm[i], 2], self.val_loc[self.val_perm[i], 3], self.val_loc[self.val_perm[i], 4]
             right_center_y = center_y
+            # Add img_id to img_id_arr
+            self.img_id_arr.append(img_id)
+
             # print(self.rdata[img_id].shape)
             # print(self.val_loc[self.val_perm[i]])
 
@@ -107,6 +113,12 @@ class Data_handler:
             elif loc_type == 2: # vertical
                 self.val_right[i] = np.transpose(self.rdata[img_id][right_center_y-self.half_patch-self.half_range : right_center_y+self.half_patch+self.half_range + 1, right_center_x-self.half_patch : right_center_x+self.half_patch + 1, :], (1, 0, 2))
 
+        # Remove duplicate id 
+        self.img_id_arr = np.unique(self.img_id_arr)
+        #print("ID: ", self.img_id_arr, "LEN ", len(self.img_id_arr))
+        # Save validation dataset to .npy file
+        with open('val.npy', 'wb') as f:
+          np.save(f, self.img_id_arr)
         print('validation created: num(%d)' % num_val_loc)
 
 
