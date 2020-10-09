@@ -31,7 +31,8 @@ def apply_cost_aggregation(cost_volume):
                                        padding='VALID',
                                        data_format='channels_last')(cost_volume)
     return last_layer
-                                
+
+
 if __name__ == '__main__':
   flags = tf.compat.v1.app.flags
 
@@ -90,6 +91,7 @@ if __name__ == '__main__':
   else:
     print("Initializing from scratch.")
 
+  error = 0
   for i in range(0, FLAGS.num_val_img):
       file_id = file_ids[i]
       if FLAGS.data_version == 'kitti2015':
@@ -144,10 +146,19 @@ if __name__ == '__main__':
       # Convert tensor to array
       pred = pred.numpy() * scale_factor
 
-      # 
       disp_targets = disp_targets[0:pred.shape[0], 0:pred.shape[1]]
-      print("PRED: ",pred)
-      print("Targets: ", disp_targets)
+      disp_targets = disp_targets * scale_factor
+
+      # valid_gt_pixels = (disp_targets != 0).astype('float')
+      # masked_prediction_valid = pred * valid_gt_pixels
+      # num_valid_gt_pixels = valid_gt_pixels.sum()
+
+      # # NOTE: Use 3-pixel error metric for now.
+      # num_error_pixels = (np.abs(masked_prediction_valid -
+      #                             disp_targets) > 3).sum()
+      acc_count += np.sum(np.abs(pred - disp_targets) <= 3)
+      error += 1 - (acc_count / disp_targets)
+
       # if FLAGS.post_processing:
       #   # Applying median filter size 3x3
       #   pred = cv2.medianBlur(pred,(3,3))
@@ -156,3 +167,5 @@ if __name__ == '__main__':
       misc.imsave('%s/true_disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), disp_targets)
 
       print('Image %s processed.' % (i + 1))
+  
+  print("MEAN ERROR:", error / FLAGS.num_val_img)
