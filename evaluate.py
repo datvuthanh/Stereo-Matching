@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from scipy import misc
 from sgm import *
 from models.model import base_model
-
+import cv2
 def apply_cost_aggregation(cost_volume):
     """Apply cost-aggregation post-processing to network predictions.
     Performs an average pooling operation over raw network predictions to smoothen
@@ -32,6 +32,7 @@ def apply_cost_aggregation(cost_volume):
                                        data_format='channels_last')(cost_volume)
     return last_layer
 
+#np.set_printoptions(threshold=sys.maxsize)
 
 if __name__ == '__main__':
   flags = tf.compat.v1.app.flags
@@ -39,7 +40,7 @@ if __name__ == '__main__':
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
   flags.DEFINE_integer('num_iter', 40000, 'Total training iterations')
   flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
-  flags.DEFINE_string('out_dir', 'disp_images', 'output dir')
+  flags.DEFINE_string('out_dir', 'new', 'output dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
   flags.DEFINE_string('util_root', '/content/Stereo-Matching/preprocess/debug_15', 'Binary training files dir')
@@ -97,7 +98,7 @@ if __name__ == '__main__':
       if FLAGS.data_version == 'kitti2015':
           linput = misc.imread(('%s/image_2/%06d_10.png') % (FLAGS.data_root, file_id))
           rinput = misc.imread(('%s/image_3/%06d_10.png') % (FLAGS.data_root, file_id))
-          disp_targets = misc.imread(('%s/disp_noc_0/%06d_10.png') % (FLAGS.data_root, file_id))
+          disp_targets = cv2.imread(('%s/disp_noc_0/%06d_10.png') % (FLAGS.data_root, file_id),cv2.IMREAD_GRAYSCALE)
       elif FLAGS.data_version == 'kitti2012':
           linput = misc.imread(('%s/image_0/%06d_10.png') % (FLAGS.data_root, file_id))
           rinput = misc.imread(('%s/image_1/%06d_10.png') % (FLAGS.data_root, file_id))
@@ -146,18 +147,18 @@ if __name__ == '__main__':
       # Convert tensor to array
       pred = pred.numpy() * scale_factor
 
-      disp_targets = disp_targets[0:pred.shape[0], 0:pred.shape[1]]
-      disp_targets = disp_targets * scale_factor
+      disp_targets = disp_targets[0:pred.shape[0], 0:pred.shape[1]] * scale_factor
 
-      # valid_gt_pixels = (disp_targets != 0).astype('float')
-      # masked_prediction_valid = pred * valid_gt_pixels
-      # num_valid_gt_pixels = valid_gt_pixels.sum()
+      valid_gt_pixels = (disp_targets != 0).astype('float')
+      
+      masked_prediction_valid = pred * valid_gt_pixels
 
-      # # NOTE: Use 3-pixel error metric for now.
-      # num_error_pixels = (np.abs(masked_prediction_valid -
-      #                             disp_targets) > 3).sum()
-      acc_count += np.sum(np.abs(pred - disp_targets) <= 3)
-      error += 1 - (acc_count / disp_targets)
+      num_valid_gt_pixels = valid_gt_pixels.sum()
+
+      # NOTE: Use 3-pixel error metric for now.
+      num_error_pixels = (np.abs(masked_prediction_valid - disp_targets) > 3).sum()
+      
+      error += num_error_pixels / num_valid_gt_pixels
 
       # if FLAGS.post_processing:
       #   # Applying median filter size 3x3
@@ -168,4 +169,4 @@ if __name__ == '__main__':
 
       print('Image %s processed.' % (i + 1))
   
-  print("MEAN ERROR:", error / FLAGS.num_val_img)
+  print("Mean Error: ", error / FLAGS.num_val_img)
