@@ -19,16 +19,20 @@ def map_inner_product(lmap, rmap):
   return prod_flatten
 
 def evaluate():
+  # Disparity range: 201 
+  # With a valid point we have 201 right point 
   lpatch, rpatch, patch_targets = dhandler.evaluate()
+  # Return index-th disparity 
   labels = np.argmax(patch_targets,axis=1)
-  left_feature = model(lpatch,training=False)
-  right_feature = model(rpatch,training=False)
-  inner_product = map_inner_product(left_feature,right_feature)
+
   acc_count = 0
-  for i in range(0, lpatch.shape[0]):
-    pred = tf.argmax(inner_product,axis = 1)
-    acc_count += np.sum(np.abs(pred - labels))
-    print("Iter: %d finished, with %d correct (3-pizel error)" % (i + 1, acc_count))
+  for i in range(0, lpatch.shape[0],FLAGS.eval_size):
+    left_feature = model(lpatch[i: i + FLAGS.eval_size],training=False)
+    right_feature = model(rpatch[i: i + FLAGS.eval_size],training=False)
+    inner_product = map_inner_product(left_feature,right_feature)
+    predicted = tf.argmax(inner_product, axis=1)
+    acc_count += np.sum(np.abs(predicted - labels[i: i + FLAGS.eval_size]) <= 3)
+    print("Iter: %d finished, with %d correct (3-pixel error)" % (i + 1, acc_count))
   print("Accuracy: %.3f" % ((acc_count / lpatch.shape[0]) * 100 ))
 
 if __name__ == '__main__':
@@ -36,7 +40,7 @@ if __name__ == '__main__':
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
   flags.DEFINE_integer('num_iter', 100000, 'Total training iterations')
-  flags.DEFINE_string('model_dir', 'new_checkpoint', 'Trained network dir')
+  flags.DEFINE_string('model_dir', 'checkpoint', 'Trained network dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
   flags.DEFINE_string('util_root', '/content/Stereo-Matching/preprocess/debug_15', 'Binary training files dir')
@@ -46,7 +50,7 @@ if __name__ == '__main__':
   flags.DEFINE_integer('num_tr_img', 160, 'number of training images')
   flags.DEFINE_integer('num_val_img', 40, 'number of evaluation images')
   flags.DEFINE_integer('patch_size', 37, 'training patch size')
-  flags.DEFINE_integer('num_val_loc', 1000, 'number of validation locations')
+  flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
   flags.DEFINE_integer('disp_range', 201, 'disparity range')
   flags.DEFINE_string('phase', 'train', 'train or evaluate')
 
