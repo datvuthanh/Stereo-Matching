@@ -60,7 +60,11 @@ if __name__ == '__main__':
 
   np.random.seed(123)
 
-  file_ids = np.fromfile(os.path.join(FLAGS.util_root, 'myPerm.bin'), '<f4')
+  #file_ids = np.fromfile(os.path.join(FLAGS.util_root, 'myPerm.bin'), '<f4')
+  # Load file_ids from val.npy
+  with open('val.npy', 'rb') as f:
+    file_ids = np.load(f)
+  #print(file_ids)
 
   if FLAGS.data_version == 'kitti2015':
       num_channels = 3
@@ -86,10 +90,8 @@ if __name__ == '__main__':
   else:
     print("Initializing from scratch.")
 
-  for i in range(FLAGS.start_id, FLAGS.start_id + FLAGS.num_imgs):
+  for i in range(0, FLAGS.num_val_img):
       file_id = file_ids[i]
-      #print("FILE: ", file_ids[0], file_ids[1],file_ids[2],file_ids[3],file_ids[4])
-      
       if FLAGS.data_version == 'kitti2015':
           linput = misc.imread(('%s/image_2/%06d_10.png') % (FLAGS.data_root, file_id))
           rinput = misc.imread(('%s/image_3/%06d_10.png') % (FLAGS.data_root, file_id))
