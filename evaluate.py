@@ -95,7 +95,7 @@ if __name__ == '__main__':
       if FLAGS.data_version == 'kitti2015':
           linput = misc.imread(('%s/image_2/%06d_10.png') % (FLAGS.data_root, file_id))
           rinput = misc.imread(('%s/image_3/%06d_10.png') % (FLAGS.data_root, file_id))
-      
+          disp_targets = misc.imread(('%s/disp_noc_0/%06d_10.png') % (FLAGS.data_root, file_id))
       elif FLAGS.data_version == 'kitti2012':
           linput = misc.imread(('%s/image_0/%06d_10.png') % (FLAGS.data_root, file_id))
           rinput = misc.imread(('%s/image_1/%06d_10.png') % (FLAGS.data_root, file_id))
@@ -148,4 +148,6 @@ if __name__ == '__main__':
       #   pred = cv2.medianBlur(pred,(3,3))
 
       misc.imsave('%s/disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), pred)
+      misc.imsave('%s/true_disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), disp_targets)
+
       print('Image %s processed.' % (i + 1))
