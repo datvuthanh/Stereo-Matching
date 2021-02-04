@@ -94,79 +94,95 @@ if __name__ == '__main__':
 
   error = 0
   for i in range(0, FLAGS.num_val_img):
-      file_id = file_ids[i]
-      if FLAGS.data_version == 'kitti2015':
-          linput = misc.imread(('%s/image_2/%06d_10.png') % (FLAGS.data_root, file_id))
-          rinput = misc.imread(('%s/image_3/%06d_10.png') % (FLAGS.data_root, file_id))
-          disp_targets = cv2.imread(('%s/disp_noc_0/%06d_10.png') % (FLAGS.data_root, file_id),cv2.IMREAD_GRAYSCALE)
-      elif FLAGS.data_version == 'kitti2012':
-          linput = misc.imread(('%s/image_0/%06d_10.png') % (FLAGS.data_root, file_id))
-          rinput = misc.imread(('%s/image_1/%06d_10.png') % (FLAGS.data_root, file_id))
-      
-      linput = (linput - linput.mean()) / linput.std()
-      rinput = (rinput - rinput.mean()) / rinput.std()
+        file_id = file_ids[i]
+        if FLAGS.data_version == 'kitti2015':
+            linput = misc.imread(('%s/image_2/%06d_10.png') % (FLAGS.data_root, file_id))
+            rinput = misc.imread(('%s/image_3/%06d_10.png') % (FLAGS.data_root, file_id))
+            disp_targets = cv2.imread(('%s/disp_noc_0/%06d_10.png') % (FLAGS.data_root, file_id),cv2.IMREAD_GRAYSCALE)
+        elif FLAGS.data_version == 'kitti2012':
+            linput = misc.imread(('%s/image_0/%06d_10.png') % (FLAGS.data_root, file_id))
+            rinput = misc.imread(('%s/image_1/%06d_10.png') % (FLAGS.data_root, file_id))
+        
+        linput = (linput - linput.mean()) / linput.std()
+        rinput = (rinput - rinput.mean()) / rinput.std()
 
-      linput = linput.reshape(1, linput.shape[0], linput.shape[1], num_channels)
-      rinput = rinput.reshape(1, rinput.shape[0], rinput.shape[1], num_channels)      
+        linput = linput.reshape(1, linput.shape[0], linput.shape[1], num_channels)
+        rinput = rinput.reshape(1, rinput.shape[0], rinput.shape[1], num_channels)      
 
-      # Get shape of output model
-      limage_map = model(linput,training=False)
-      rimage_map = model(rinput,training=False)
+        # Get shape of output model
+        # We need processing here
+        height, width = linput.shape[1:3]
 
-      # Test
-      #print("Left model weights",left_model.get_weights()[0])
-      #print("Right model weights",right_model.get_weights()[0])
+        # print(height,width)
 
-      map_width = limage_map.shape[2]
-      cost_volume = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
-      #print("Cost volume shape: ",cost_volume.shape)
-      for loc in range(FLAGS.disp_range):
-          x_off = -loc
-          l = limage_map[:, :, max(0, -x_off): map_width,:]
-          r = rimage_map[:, :, 0: min(map_width, map_width + x_off),:]
-          inner = tf.reduce_sum(tf.multiply(l, r), axis=3, name='map_inner_product') # Batch x 1 x 201
-          #print("Inner product: ",inner.shape)
-          cost_volume[:, max(0, -x_off): map_width, loc] = inner[0, :, :]
-      if FLAGS.cost_aggregation:
+        patch_height = 37
+        patch_width = 37
+
+        # pad images to make the final feature map size = (height, width..)
+        auged_left_image = np.zeros([1, height+patch_height-1, width+patch_width-1, 3], dtype=np.float32)
+        auged_right_image = np.zeros([1, height+patch_height-1, width+patch_width-1, 3], dtype=np.float32)
+
+        # print(auged_left_image.shape)
+        row_start = int((patch_height - 1)//2)
+        col_start = int((patch_width - 1)//2)
+
+        # print(row_start)
+        auged_left_image[0, row_start: row_start+height, col_start: col_start+width] = linput
+        auged_right_image[0, row_start: row_start+height, col_start: col_start+width] = rinput
+
+        # Test
+        # Get shape of output model
+        limage_map = model(auged_left_image,training=False)
+        rimage_map = model(auged_right_image,training=False)
+
+        map_width = limage_map.shape[2]
+        cost_volume = np.zeros((limage_map.shape[1], limage_map.shape[2], FLAGS.disp_range))
+        #print("Cost volume shape: ",cost_volume.shape)
+        for loc in range(FLAGS.disp_range):
+            x_off = -loc
+            l = limage_map[:, :, max(0, -x_off): map_width,:]
+            r = rimage_map[:, :, 0: min(map_width, map_width + x_off),:]
+            inner = tf.reduce_sum(tf.multiply(l, r), axis=3, name='map_inner_product') # Batch x 1 x 201
+            #print("Inner product: ",inner.shape)
+            cost_volume[:, max(0, -x_off): map_width, loc] = inner[0, :, :]
+        if FLAGS.cost_aggregation:
         # We will use average pool 5x5 on original paper
         if FLAGS.average_pooling:
-          print("Average pooling")
-          cost_volume = cost_volume.reshape((1, cost_volume.shape[0], cost_volume.shape[1], cost_volume.shape[2]))
-          cost_volume = apply_cost_aggregation(cost_volume)
-          cost_volume = tf.squeeze(cost_volume)
+            print("Average pooling")
+            cost_volume = cost_volume.reshape((1, cost_volume.shape[0], cost_volume.shape[1], cost_volume.shape[2]))
+            cost_volume = apply_cost_aggregation(cost_volume)
+            cost_volume = tf.squeeze(cost_volume)
         # If not we will use semi global matching
         else:
-          print("Semi-global matching")
-          parameters = Parameters(max_disparity=FLAGS.disp_range, P1=10, P2=120, csize=(7, 7), bsize=(3, 3))
-          paths = Paths()
-          #print("here")
-          cost_volume = aggregate_costs(cost_volume, parameters, paths)
-          cost_volume = np.sum(cost_volume, axis=3)
-      
-      pred = tf.argmax(cost_volume, axis=2)
-      # Convert tensor to array
-      pred = pred.numpy() * scale_factor
+            print("Semi-global matching")
+            parameters = Parameters(max_disparity=FLAGS.disp_range, P1=10, P2=120, csize=(7, 7), bsize=(3, 3))
+            paths = Paths()
+            #print("here")
+            cost_volume = aggregate_costs(cost_volume, parameters, paths)
+            cost_volume = np.sum(cost_volume, axis=3)
+        
+        pred = tf.argmax(cost_volume, axis=2)
+        # Convert tensor to array
+        pred = pred.numpy() #* scale_factor
+        
+        valid_gt_pixels = (disp_targets != 0).astype('float')
+        
+        masked_prediction_valid = pred * valid_gt_pixels
 
-      disp_targets = disp_targets[0:pred.shape[0], 0:pred.shape[1]] * scale_factor
+        num_valid_gt_pixels = valid_gt_pixels.sum()
 
-      valid_gt_pixels = (disp_targets != 0).astype('float')
-      
-      masked_prediction_valid = pred * valid_gt_pixels
+        # NOTE: Use 3-pixel error metric for now.
+        num_error_pixels = (np.abs(masked_prediction_valid - disp_targets) > 3).sum()
+        
+        error += num_error_pixels / num_valid_gt_pixels
 
-      num_valid_gt_pixels = valid_gt_pixels.sum()
+        # if FLAGS.post_processing:
+        #   # Applying median filter size 3x3
+        #   pred = cv2.medianBlur(pred,(3,3))
 
-      # NOTE: Use 3-pixel error metric for now.
-      num_error_pixels = (np.abs(masked_prediction_valid - disp_targets) > 3).sum()
-      
-      error += num_error_pixels / num_valid_gt_pixels
+        misc.imsave('%s/disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), pred)
+        misc.imsave('%s/true_disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), disp_targets)
 
-      # if FLAGS.post_processing:
-      #   # Applying median filter size 3x3
-      #   pred = cv2.medianBlur(pred,(3,3))
-
-      misc.imsave('%s/disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), pred)
-      misc.imsave('%s/true_disp_map_%06d_10.png' % (FLAGS.out_dir, file_id), disp_targets)
-
-      print('Image %s processed.' % (i + 1))
+        print('Image %s processed.' % (i + 1))
   
   print("Mean Error: ", error / FLAGS.num_val_img)
