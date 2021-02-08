@@ -122,16 +122,14 @@ if __name__ == '__main__':
         auged_left_image = np.zeros([1, height+patch_height-1, width+patch_width-1, 3], dtype=np.float32)
         auged_right_image = np.zeros([1, height+patch_height-1, width+patch_width-1, 3], dtype=np.float32)
 
-        # print(auged_left_image.shape)
         row_start = int((patch_height - 1)//2)
         col_start = int((patch_width - 1)//2)
 
-        # print(row_start)
+        # Expand input images
         auged_left_image[0, row_start: row_start+height, col_start: col_start+width] = linput
         auged_right_image[0, row_start: row_start+height, col_start: col_start+width] = rinput
 
-        # Test
-        # Get shape of output model
+        # Prediction
         limage_map = model(auged_left_image,training=False)
         rimage_map = model(auged_right_image,training=False)
 
@@ -145,21 +143,22 @@ if __name__ == '__main__':
             inner = tf.reduce_sum(tf.multiply(l, r), axis=3, name='map_inner_product') # Batch x 1 x 201
             #print("Inner product: ",inner.shape)
             cost_volume[:, max(0, -x_off): map_width, loc] = inner[0, :, :]
+            
         if FLAGS.cost_aggregation:
         # We will use average pool 5x5 on original paper
-        if FLAGS.average_pooling:
-            print("Average pooling")
-            cost_volume = cost_volume.reshape((1, cost_volume.shape[0], cost_volume.shape[1], cost_volume.shape[2]))
-            cost_volume = apply_cost_aggregation(cost_volume)
-            cost_volume = tf.squeeze(cost_volume)
-        # If not we will use semi global matching
-        else:
-            print("Semi-global matching")
-            parameters = Parameters(max_disparity=FLAGS.disp_range, P1=10, P2=120, csize=(7, 7), bsize=(3, 3))
-            paths = Paths()
-            #print("here")
-            cost_volume = aggregate_costs(cost_volume, parameters, paths)
-            cost_volume = np.sum(cost_volume, axis=3)
+            if FLAGS.average_pooling:
+                print("Average pooling")
+                cost_volume = cost_volume.reshape((1, cost_volume.shape[0], cost_volume.shape[1], cost_volume.shape[2]))
+                cost_volume = apply_cost_aggregation(cost_volume)
+                cost_volume = tf.squeeze(cost_volume)
+            # If not we will use semi global matching
+            else:
+                print("Semi-global matching")
+                parameters = Parameters(max_disparity=FLAGS.disp_range, P1=10, P2=120, csize=(7, 7), bsize=(3, 3))
+                paths = Paths()
+                #print("here")
+                cost_volume = aggregate_costs(cost_volume, parameters, paths)
+                cost_volume = np.sum(cost_volume, axis=3)
         
         pred = tf.argmax(cost_volume, axis=2)
         # Convert tensor to array
