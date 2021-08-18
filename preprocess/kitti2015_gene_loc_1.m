@@ -150,5 +150,3 @@ fwrite(fw_id, fn_idx, 'float');
 fclose(fw_id);
 
 end
-
-kitti2015_gene_loc_1(160,40,18,100,'debug_15',123)
