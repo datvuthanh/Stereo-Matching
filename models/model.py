@@ -26,3 +26,16 @@ def base_model(input_shape):
   bn9 = BatchNormalization()(conv9)
   model = Model(inputs=inputs, outputs=bn9)
   return model
+
+def base_model_ws_9(input_shape): # Based on mc-cnn fast architecture
+  inputs = Input(shape=input_shape)
+  conv1 = Conv2D(64, (3,3),activation='relu',padding='valid')(inputs)
+  bn1 = BatchNormalization()(conv1)
+  conv2 = Conv2D(64, (3,3), activation='relu',padding='valid')(bn1)
+  bn2 = BatchNormalization()(conv2)
+  conv3 = Conv2D(64, (3,3), activation='relu',padding='valid')(bn2)
+  bn3 = BatchNormalization()(conv3)
+  conv4 = Conv2D(64, (3,3), activation=None,padding='valid')(bn3)
+  bn4 = BatchNormalization()(conv4)
+  model = Model(inputs=inputs, outputs=bn4)
+  return model
