@@ -78,7 +78,11 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 
 ## Results
 Before post-processing
+
+Left:
 ![Left image](results/left_disp/left_000002_10.png)
+Right:
+![Left image](results/right_disp/right_000002_10.png)
 
 After post-processing
 ![Predicted disparity](results/nyu_post/000002_10.png)
