@@ -93,4 +93,4 @@ After post-processing
   | baseline (paper)                    |     15.25            |
   | baseline (re-implementation)        |     12.47           |
   | baseline + CA + SGM + Post (paper)               |     4.25            |
-  | baseline + CA + SGM + Post(re-implementation)   |     3.32            |
+  | baseline + CA + SGM + Post (re-implementation)   |     3.32            |
