@@ -79,18 +79,6 @@ Iterations: 40000, Batch size: 128, Depth: 9, Kernel size: 5 x 5
   |                                     | 3-pixel error (%)   |
   |-------------------------------------|:-------------------:|
   | baseline (paper)                    |     7.13            |
-  | baseline (re-implementation)        |     8.000           |
+  | baseline (re-implementation)        |     12.47           |
   | baseline + CA (paper)               |     6.58            |
-  | baseline + CA (re-implementation)   |     -               |
-
-## Visualization 
-
-![Loss](results/loss.png)
-
-### Possible next steps
-
-- [x] Semi Global Matching
-- [ ] Run inference on test video sequences.
-- [ ] Speed up SGM algorithm by numba
-- [ ] Post processing use median filter
-- [ ] Tensorboard logs
+  | baseline + CA (re-implementation)   |     3.32            |
