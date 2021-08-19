@@ -32,20 +32,48 @@ Parameters: 160 is number of images to train on, 40 is number of image to valida
 3. cd preprocess
 4. octave preprocess.m
 
-## Computional Graph
-![Computional Graph](results/graph.png)
+## Steps
+1. Folder preprocess
+ 
+    Crate patches dataset by running matlab preprocess.m 
+    kitti2015_gene_loc_1(160,40,4,100,'debug_15_ws_9',123, '../kitti2015/training')
+    Parameters: 160 is number of images to train on, 40 is number of image to validate on, 4 represents size of image patch with (2x4+1) by (2x4+1), 100 represents searching range(disparity range to train on, corresponding to 2x100+1), 'debug_15' is the folder to save results, 123 is the random seed.
+    patch_size: 9x9, disparity range: 201
+    Dataset .bin saved in debug_15_ws_9 folder
+    
+2. train.py
+ 
+    There are two models in models folder: base_model (patch size 37x37), base_model_ws_9(patch size 9x9)
+    Checkpoint saved in new_checkpoint
+ 
+3. evaluate.py
 
-## Train
-
-    python3 train.py --data_root /kitti2015/training --util_root preprocess/debug_15
-
-## Evaluate
-
-    python3 evaluate.py --data_root /kitti2015/training --util_root preprocess/debug_15 
-
-## Inference
-
-    python3 inference.py --data_root /kitti2015/testing --util_root preprocess/debug_15 --model_dir checkpoint --out_dir disp_images --num_imgs 5
+    Calculate error between label i and predict disparity range of pixel i 
+    
+4. inference.py
+ 
+    Create disparity map and calculate error between prediction disparity map and ground truth disparity map (before postprocessing) that saved in results (gt, left_cost, right_cost, left_disp, right_disp)
+    gt: ground truth of disparity map
+    left_cost: left cost volume (.bin)
+    right_cost: right cost volume (.bin)
+    left_disp: predicted left disparity map
+    right_disp: predicted right disparity map
+    
+    In my process, I got the error pixel is 12.47
+ 
+5. Postprocessing (post.lua), you need to install torch7 and mc-cnn (go to smooth folder)
+    Cost aggregation -> SGM -> Cost aggregation 2 -> occlusion -> subpixel -> median -> bilateral
+    
+    equal to (in results folder):
+    
+    nyu_cost_img -> nyu_sgm_img -> nyu_cost_img_2 -> (nyu_post, outlier)
+    
+    Finally, nyp_post folder is last step in postprocessing disparity map
+    
+6. cal.py 
+    Re calculate pixel error after postprocessing
+    
+    I got the error pixel is 0.03322434828603092
 
 
 ## Results
