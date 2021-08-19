@@ -8,7 +8,6 @@ from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
 import matplotlib.pyplot as plt
 from scipy import misc
-from sgm import *
 from models.model import base_model,base_model_ws_9
 import cv2
 def apply_cost_aggregation(cost_volume):
