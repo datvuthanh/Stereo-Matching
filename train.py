@@ -5,7 +5,7 @@ import numpy as np
 from data_handler import Data_handler
 from keras.utils.vis_utils import plot_model
 from tensorflow.keras import optimizers
-from models.model import base_model
+from models.model import base_model,base_model_ws_9
 from tensorflow.keras.models import Model
 
 def map_inner_product(lmap, rmap):
@@ -24,14 +24,14 @@ if __name__ == '__main__':
   flags.DEFINE_integer('num_iter', 100000, 'Total training iterations')
   flags.DEFINE_string('model_dir', 'new_checkpoint', 'Trained network dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
-  flags.DEFINE_string('data_root', '/content/Stereo-Matching/kitti_2015/training', 'training dataset dir')
-  flags.DEFINE_string('util_root', '/content/Stereo-Matching/preprocess/debug_15', 'Binary training files dir')
-  flags.DEFINE_string('net_type', 'win37_dep9', 'Network type: win37_dep9 pr win19_dep9')
+  flags.DEFINE_string('data_root', './kitti2015/training', 'training dataset dir')
+  flags.DEFINE_string('util_root', './preprocess/debug_15_ws_9', 'Binary training files dir')
+  flags.DEFINE_string('net_type', 'win9_dep9', 'Network type: win37_dep9 pr win9_dep9')
 
   flags.DEFINE_integer('eval_size', 200, 'number of evaluation patchs per iteration')
   flags.DEFINE_integer('num_tr_img', 160, 'number of training images')
   flags.DEFINE_integer('num_val_img', 40, 'number of evaluation images')
-  flags.DEFINE_integer('patch_size', 37, 'training patch size')
+  flags.DEFINE_integer('patch_size', 9, 'training patch size')
   flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
   flags.DEFINE_integer('disp_range', 201, 'disparity range')
   flags.DEFINE_string('phase', 'train', 'train or evaluate')
@@ -62,7 +62,10 @@ if __name__ == '__main__':
   right_input = (FLAGS.patch_size,FLAGS.patch_size + FLAGS.disp_range - 1, num_channels)
   
   # Create model  
-  model = base_model((None,None,3))
+  if FLAGS.net_type == 'win37_dep9':
+    model = base_model((None,None,3))
+  else:
+    model = base_model_ws_9((None,None,3))
 
   # Plot model
   #plot_model(model, to_file='model_plot.png', show_shapes=True, show_layer_names=True)
@@ -70,7 +73,7 @@ if __name__ == '__main__':
 
 
   # Create optimizer and checkpoint
-  learning_rate = 0.01
+  learning_rate = 0.001
   optimizer = optimizers.Adam(learning_rate)
   ckpt = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, net=model)
   manager = tf.train.CheckpointManager(ckpt, FLAGS.model_dir, max_to_keep=3)
