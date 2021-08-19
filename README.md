@@ -85,12 +85,12 @@ After post-processing
 
 #### Quantitative results
 
-* To compare with results reported in paper, look at Table-5, column `Ours(37)`.
+* To compare with results reported in paper, look at Table-5, column `Ours(9)`.
 
 
   |                                     | 3-pixel error (%)   |
   |-------------------------------------|:-------------------:|
-  | baseline (paper)                    |     7.13            |
+  | baseline (paper)                    |     15.25            |
   | baseline (re-implementation)        |     12.47           |
-  | baseline + CA (paper)               |     6.58            |
-  | baseline + CA (re-implementation)   |     3.32            |
+  | baseline + CA + SGM + Post (paper)               |     4.25            |
+  | baseline + CA + SGM + Post(re-implementation)   |     3.32            |
