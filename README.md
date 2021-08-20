@@ -85,7 +85,7 @@ Right:
 ![Left image](results/right_disp/right_000002_10.png)
 
 After post-processing
-![Predicted disparity](results/nyu_post/000002_10.png)
+![Predicted disparity](results/000002_10.png)
 
 #### Quantitative results
 
