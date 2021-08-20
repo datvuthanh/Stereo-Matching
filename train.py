@@ -21,7 +21,9 @@ if __name__ == '__main__':
   flags = tf.compat.v1.app.flags
 
   flags.DEFINE_integer('batch_size', 128, 'Batch size.')
-  flags.DEFINE_integer('num_iter', 100000, 'Total training iterations')
+  flags.DEFINE_integer('num_iter', 1000, 'Total training iterations')
+  flags.DEFINE_integer('max_epoch', 120, 'Total training iterations')
+
   flags.DEFINE_string('model_dir', 'new_checkpoint', 'Trained network dir')
   flags.DEFINE_string('data_version', 'kitti2015', 'kitti2012 or kitti2015')
   flags.DEFINE_string('data_root', './kitti2015/training', 'training dataset dir')
@@ -32,7 +34,7 @@ if __name__ == '__main__':
   flags.DEFINE_integer('num_tr_img', 160, 'number of training images')
   flags.DEFINE_integer('num_val_img', 40, 'number of evaluation images')
   flags.DEFINE_integer('patch_size', 9, 'training patch size')
-  flags.DEFINE_integer('num_val_loc', 10000, 'number of validation locations')
+  flags.DEFINE_integer('num_val_loc', 5000, 'number of validation locations')
   flags.DEFINE_integer('disp_range', 201, 'disparity range')
   flags.DEFINE_string('phase', 'train', 'train or evaluate')
 
@@ -85,36 +87,50 @@ if __name__ == '__main__':
     print("Initializing from scratch.")
 
   loss_history = []
-  for _ in range(FLAGS.num_iter):
-    lpatch, rpatch, patch_targets = dhandler.next_batch()  
-    #Feature extractor from model
-    with tf.GradientTape() as tape:
+  acc_epoch = 0
+  for i in range (FLAGS.max_epoch):
+    print("Epoch: ", i)
+    acc_count = 0
+    for _ in range(FLAGS.num_iter):
+      lpatch, rpatch, patch_targets = dhandler.next_batch()  
+      labels = np.argmax(patch_targets, axis = 1)
+      #Feature extractor from model
+      with tf.GradientTape() as tape:
 
-      left_feature = model(lpatch,training=True)
-      right_feature = model(rpatch,training=True)
+        left_feature = model(lpatch,training=True)
+        right_feature = model(rpatch,training=True)
+        
+        # Inner product
+        inner_product = map_inner_product(left_feature,right_feature)
+        # Loss
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=inner_product,labels=patch_targets), name='loss')
+      #Gradient descent
+      grads = tape.gradient(loss,model.trainable_variables)
+      loss_history.append(loss.numpy().mean())
+      optimizer.apply_gradients(zip(grads, model.trainable_variables))
+
+      # Calculate 3 pixel error
+
+      predicted = tf.argmax(inner_product,axis = 1) # Get best disparity range of each pixels
+
+      acc_count += np.sum(np.abs(predicted - labels) <= 3)
+
+      # Add global step += 1
+      ckpt.step.assign_add(1)
+      if int(ckpt.step) % 100 == 0:
+        save_path = manager.save()
+        print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
+        print('Loss at step: %d: %.6f' % (int(ckpt.step), loss))
       
-      # Inner product
-      inner_product = map_inner_product(left_feature,right_feature)
-      # Loss
-      loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=inner_product,labels=patch_targets), name='loss')
-    #Gradient descent
-    grads = tape.gradient(loss,model.trainable_variables)
-    loss_history.append(loss.numpy().mean())
-    optimizer.apply_gradients(zip(grads, model.trainable_variables))
+      if int(ckpt.step) == 24000:
+        learning_rate = learning_rate / 5.
+        optimizer.lr.assign(learning_rate)
+      elif int(ckpt.step) > 24000 and (int(ckpt.step) - 24000) %  8000 == 0:
+        learning_rate = learning_rate / 5.      
+        optimizer.lr.assign(learning_rate)
     
-    # Add global step += 1
-    ckpt.step.assign_add(1)
-    if int(ckpt.step) % 100 == 0:
-      save_path = manager.save()
-      print("Saved checkpoint for step {}: {}".format(int(ckpt.step), save_path))
-      print('Loss at step: %d: %.6f' % (int(ckpt.step), loss))
-    
-    if int(ckpt.step) == 24000:
-      learning_rate = learning_rate / 5.
-      optimizer.lr.assign(learning_rate)
-    elif int(ckpt.step) > 24000 and (int(ckpt.step) - 24000) %  8000 == 0:
-      learning_rate = learning_rate / 5.      
-      optimizer.lr.assign(learning_rate)
-  # plt.plot(loss_history)
-  # plt.xlabel('Batch #')
-  # plt.ylabel('Loss [entropy]')
+    print('Epoch %d finished, with accuracy: %f' % (i + 1, acc_count / (FLAGS.batch_size * FLAGS.num_iter)))
+
+    acc_epoch += acc_count
+  
+  print('Accuracy: ', ((acc_epoch / (FLAGS.max_epoch * FLAGS.num_iter * FLAGS.batch_size)) * 100))
